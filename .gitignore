@@ -1,0 +1,7 @@
+# ignore the Pycharm mumbo jumbo that keeps track of interpreter
+.idea
+__pycache__
+.swp
+
+# ignore the image folder
+image_bin
