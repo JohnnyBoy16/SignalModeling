@@ -13,15 +13,13 @@ from mayavi import mlab
 import sm_functions as sm
 import half_space as hs
 
-sys.path.insert(0, 'C:\\Users\\John Nagel\\Box Sync\\PycharmProjects\\THzProcClass3')
+sys.path.insert(0, 'D:\\Python\\THzProcClass')
 from THzData import THzData
-
-__author__ = 'John Nagel'
 
 # ref_file = 'D:\\Work\\Signal Modeling\\References\\ref 12JUN2017\\60 ps waveform.txt'
 # tvl_file = 'D:\\Work\\Signal Modeling\\THz Data\\HDPE Lens\\Smooth Side (res=0.5mm, OD=60ps).tvl'
-ref_file = 'C:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
-tvl_file = 'C:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
+ref_file = 'D:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
+tvl_file = 'D:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
 
 # if we want to solve over the entire sample use None
 # location_list = None
@@ -165,6 +163,10 @@ else:
     # make stop_index an integer multiple of step that is larger than the original stop_index
     stop_index = stop_index + (step - stop_index % step)
 
+# the number of steps that are taken in the frequency domain
+# number of solutions that we find between 0 THz and max_f
+n_steps = stop_index // step
+
 # lower and upper bound, used to gate the bins in the for loop below
 # this way we are passing in a section of the arrays that are step indices wide
 # enforce integer division, so lb and ub are both ints
@@ -279,7 +281,7 @@ if location_list is not None:
             plt.scatter(x=ni_guess[min_coords[1]], y=nr_guess[min_coords[0]], color='r',
                         label='Brute Force')
         if lsq_on:
-            plt.scatter(x=lsq_n[i, 1], y=lsq_n[i, 0], color='y', label='LSQ Solution')
+            plt.scatter(x=lsq_n[i].imag, y=lsq_n[i].real, color='y', label='LSQ Solution')
         plt.title(fig_string, color=colors[i])
         plt.xlabel(r'$n_{real}$')
         plt.ylabel(r'$n_{imag}$')
@@ -310,7 +312,9 @@ if location_list is not None:
     mlab.surf(cost[1, :, :, 0], warp_scale='auto')
     mlab.colorbar()
 
-if location_list is None:
+if location_list is None and brute_force_on:
+    # display the brute force index of refraction solution map that has been solved for at each
+    # frequency step that was searched
     for i in range(stop_index // step):
         # vmax = brute_force_n[:, :, i].real.max()
         # vmin = brute_force_n[brute_force_n[:, :, i].real.nonzero()].min()
@@ -331,16 +335,48 @@ if location_list is None:
         plt.grid()
         plt.colorbar()
 
-        plt.figure('Histogram of Real Values')
-        plt.hist(n_solution[:, :, i].real.flatten())
-        plt.xlabel('n solution')
-        plt.ylabel('Number of Values')
-        plt.title('Histogram of Real Solution Values')
+    plt.figure('Histogram of Real Values')
+    plt.hist(n_solution.real.flatten())
+    plt.xlabel('n solution')
+    plt.ylabel('Number of Values')
+    plt.title('Histogram of Real Solution Values')
 
-        plt.figure('Histogram of Imaginary Values')
-        plt.hist(n_solution[:, :, i].imag.flatten())
-        plt.xlabel(r'$\kappa$ Solution')
-        plt.ylabel('Number of Values')
-        plt.title('Histogram of Imaginary Solution Values')
+    plt.figure('Histogram of Imaginary Values')
+    plt.hist(n_solution.imag.flatten())
+    plt.xlabel(r'$\kappa$ Solution')
+    plt.ylabel('Number of Values')
+    plt.title('Histogram of Imaginary Solution Values')
+
+if location_list is None and lsq_on:
+    # print the least squares solution to the index of refraction at each frequency step we are
+    # searching in
+    for i in range(n_steps):
+        fig_string = 'LSQ Real Solution %d' % i
+        plt.figure(fig_string)
+        plt.imshow(lsq_n[:, :, i].real, interpolation='none', extent=data.c_scan_extent)
+        plt.xlabel('X Scan Location (mm)')
+        plt.ylabel('Y Scan Location (mm)')
+        plt.grid()
+        plt.colorbar()
+
+        fig_string = 'LSQ Imaginary Solution %d' % i
+        plt.figure(fig_string)
+        plt.imshow(lsq_n[:, :, i].imag, interpolation='none', extent=data.c_scan_extent)
+        plt.xlabel('X Scan Location (mm)')
+        plt.ylabel('Y Scan Location (mm)')
+        plt.grid()
+        plt.colorbar()
+
+    plt.figure('LSQ Histogram of Real Solution Values')
+    plt.hist(lsq_n.real.flatten())
+    plt.xlabel(r'$n$ solution')
+    plt.ylabel('Number of Values')
+    plt.title('LSQ Histogram of Real Solution Values')
+
+    plt.figure('LSQ Histogram of Imaginary Solution Values')
+    plt.hist(lsq_n.imag.flatten())
+    plt.xlabel(r'$\kappa$ solution')
+    plt.ylabel('Number of Values')
+    plt.title('LSQ Histogram of Imaginary Solution Values')
 
 plt.show()
