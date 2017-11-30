@@ -18,11 +18,11 @@ import sm_functions as sm
 import half_space as hs
 
 # load in THzDataClass that I created
-sys.path.insert(0, 'D:\\BoxSync\\PycharmProjects\\THzProcClass3')
+sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
 from THzData import THzData
 
-ref_file = 'D:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
-tvl_file = 'D:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
+ref_file = 'C:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
+tvl_file = 'C:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
 
 # range of real and imaginary values to build the cost function over
 nr_bounds = np.linspace(1, 4.25, 250)
@@ -99,19 +99,12 @@ for i, nr in enumerate(nr_bounds):
     for j, ni in enumerate(ni_bounds):
         n = np.array([nr, ni])
 
-        raw_cost, raw_error, model = \
+        raw_cost = \
             hs.half_space_mag_phase_equation(n, e0[:stop_index], e2[:stop_index],
                                              ref_freq[:stop_index], d, theta0)
 
         # try to emulate least squares
         cost[i, j] = np.sum(raw_cost)
-
-        # Dr. Chiou wants to check the error at each (nr, ni) pair
-        error[i, j] = np.sum(raw_error)
-
-        # check the unwrapped phase and log(abs(T)) like in Duvillaret's paper
-        arg_T[i, j, :] = np.unwrap(np.angle(model))
-        log_abs_T[i, j, :] = np.log(np.abs(model))
 
 cost_min_coords = np.argmin(cost)
 cost_min_coords = np.unravel_index(cost_min_coords, cost.shape)
