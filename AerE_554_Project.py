@@ -18,15 +18,15 @@ import half_space as hs
 import util
 
 # load in THzDataClass that I created
-sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
+sys.path.insert(0, 'D:\\Python\\THzProcClass')
 from THzData import THzData
 
 
-ref_file = 'C:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
-tvl_file = 'C:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
+ref_file = 'D:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
+tvl_file = 'D:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
 
 # range of real and imaginary values to build the cost function over
-nr_bounds = np.linspace(1, 4.25, 250)
+nr_bounds = np.linspace(4.25, 1, 250)
 ni_bounds = np.linspace(-0.001, -2, 250)
 
 location = np.array([16, 5])  # index from which to extract values from tvl file

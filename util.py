@@ -12,7 +12,7 @@ def parabolic_equation(data, a, b, c, d, e):
     :param e:
     :return:
     """
-    x, y = data
+    y, x = data
 
     paraboloid = ((x - a) / b) ** 2 + ((y - d) / e) ** 2 + c
 
