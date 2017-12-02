@@ -13,13 +13,13 @@ from mayavi import mlab
 import sm_functions as sm
 import half_space as hs
 
-sys.path.insert(0, 'D:\\Python\\THzProcClass')
+sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass3')
 from THzData import THzData
 
 # ref_file = 'D:\\Work\\Signal Modeling\\References\\ref 12JUN2017\\60 ps waveform.txt'
 # tvl_file = 'D:\\Work\\Signal Modeling\\THz Data\\HDPE Lens\\Smooth Side (res=0.5mm, OD=60ps).tvl'
-ref_file = 'D:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
-tvl_file = 'D:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
+ref_file = 'C:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
+tvl_file = 'C:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
 
 # if we want to solve over the entire sample use None
 # location_list = None
@@ -33,14 +33,14 @@ tvl_file = 'D:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow S
 #                           [58, 28]])
 
 # location list for yellow shim stock
-# location_list = np.array([[8, 32],
-#                           [16, 5],
-#                           [17, 35],
-#                           [9, 17],
-#                           [5, 8],
-#                           [2, 34],
-#                           [7, 3]])
-location_list = None
+location_list = np.array([[8, 32],
+                          [16, 5],
+                          [17, 35],
+                          [9, 17],
+                          [5, 8],
+                          [2, 34],
+                          [7, 3]])
+# location_list = None
 
 # use flag = 1 for half space model to match nr and ni
 #          = 2 for half space model to match magnitude and phase
@@ -311,6 +311,28 @@ if location_list is not None:
     mlab.figure('Cost Function Example in 3D')
     mlab.surf(cost[1, :, :, 0], warp_scale='auto')
     mlab.colorbar()
+
+    # build a model signal using the half space model solution to compare
+    n1 = n_solution[0]
+
+    theta1 = sm.get_theta_out(1.0, n1, theta0)
+    r01 = sm.reflection_coefficient(1.0, n1, theta0, theta1)
+
+    FSE = e0_gated * r01
+
+    BSE = hs.half_space_model(e0_gated, freq, n1, d, theta0, theta1)
+
+    model = FSE + BSE
+
+    model = np.fft.irfft(model) / data.delta_t
+
+    plt.figure('Model Waveform from Brute Force Solution')
+    plt.plot(data.time, model, 'r')
+    plt.xlabel('Time (ps)')
+    plt.ylabel('Amplitude')
+    plt.title('Model Waveform from Brute Force Solution')
+    plt.grid()
+
 
 if location_list is None and brute_force_on:
     # display the brute force index of refraction solution map that has been solved for at each

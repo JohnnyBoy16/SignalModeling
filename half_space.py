@@ -2,7 +2,7 @@ import pdb
 import copy
 
 import numpy as np
-from scipy.optimize import leastsq
+from scipy.optimize import leastsq, minimize
 
 import sm_functions as sm
 
@@ -29,17 +29,19 @@ def half_space_main(e0, data, location_list, freq, nr_list, ni_list, d, theta0, 
         pass
 
     else:  # flag == 2
-        # try and match magnitude and phase
+        # find optimal complex index of refraction only at selected points in location list
         if lsq_on and location_list is not None:
             for i, loc in enumerate(location_list):
-                n0 = np.array([2.0, -0.2])
+                n0 = np.array([2.0, 0.2])
                 e2 = copy.deepcopy(data.freq_waveform[loc[0], loc[1], :])
+
                 sol = leastsq(half_space_mag_phase_equation, n0, args=(e0, e2, freq, d, theta0))
 
                 lsq_n[i] = sol[0][0] + 1j*sol[0][1]
                 # lsq_cost[i] = sol.cost
-                # pdb.set_trace()
 
+        # perform a point-by-point least squares minimization to find the optimal real and
+        # imaginary parts of the index of refraction
         elif lsq_on and location_list is None:
             for i in range(data.y_step):
                 for j in range(data.x_step):
@@ -162,25 +164,12 @@ def half_space_model_equation(n_in, e0, e2, freq, d, theta0, c=0.2998):
     model transmission coefficient that is derived from the comparison of the reference signal
     (e0) to the experimental data (e2)
     """
-    # scipy doesn't like to deal with complex values, so let n_in be a 2 element array and then
-    # make it complex
-    n_out = n_in[0] + 1j * n_in[1]
 
-    # determine the angle in the material for whatever the index of refraction is
-    theta1 = sm.get_theta_out(1.0, n_out, theta0)
+    n_in[1] *= -1
 
-    model = half_space_model(e0, freq, n_out, d, theta0, theta1, c)
+    delta = half_space_mag_phase_equation(n_in, e0, e2, freq, d, theta0, c)
 
-    comparison = model - e2
-
-    # # scipy also wants to have the return array be real valued as well
-    # return_array = np.zeros(len(model) * 2)
-    #
-    # # alternate real and imaginary parts in the array
-    # return_array[0:len(return_array):2] = comparison.real
-    # return_array[1:len(return_array):2] = comparison.imag
-
-    return comparison
+    return np.sum(delta)
 
 
 def half_space_mag_phase_equation(n_in, e0, e2, freq, d, theta0, c=0.2998):
@@ -209,13 +198,11 @@ def half_space_mag_phase_equation(n_in, e0, e2, freq, d, theta0, c=0.2998):
     e2_unwrapped_phase = np.unwrap(np.angle(T_data))
 
     # add in the error function that is found in Duvillaret's 1996 paper
-    rho = np.log(np.abs(T_model)) - np.log(np.abs(T_data))
-    phi = model_unwrapped_phase - e2_unwrapped_phase
+    rho = np.log(np.abs(T_data)) - np.log(np.abs(T_model))
+    phi = e2_unwrapped_phase - model_unwrapped_phase
 
     # delta = np.array([rho, phi])
     delta = rho**2 + phi**2
 
-    # error = model - e2  # Dr. Chiou wants to check the error at each (nr, ni) pair
-
     # return the model unwrapped phase to see if it forms a plane versus (nr, ni)
-    return delta  # , error, model
+    return delta  # , model
