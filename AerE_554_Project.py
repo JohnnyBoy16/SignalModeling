@@ -18,12 +18,12 @@ import half_space as hs
 import util
 
 # load in THzDataClass that I created
-sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
+sys.path.insert(0, 'D:\\PycharmProjects\\THzProcClass')
 from THzData import THzData
 
 
-ref_file = 'C:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
-tvl_file = 'C:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
+ref_file = 'D:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
+tvl_file = 'D:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
 
 # range of real and imaginary values to build the cost function over
 nr_bounds = np.linspace(4.25, 1, 250)
@@ -130,7 +130,44 @@ t1 = time.time()
 print('Brute Force Search Time = %0.4f seconds' % (t1-t0))
 print(n_hat)
 
-# number of samples to use in the latin hypercube
+# try optimizing the true function and see how long it takes
+# determine the time of flight between the front and back surface echos
+t0 = data.time[data.waveform[location[0], location[1], :].argmax()]
+t1 = data.time[data.waveform[location[0], location[1], gate1:].argmax() + gate1]
+
+# since we know the thickness of the sample, we can use that to get a first estimate of the index
+# of refraction, initial estimate assumes no angle of incidence
+c_sample = 2*d / (t1-t0)  # estimate of speed of light in the material
+n0 = c / c_sample  # initial guess for n_real
+n0 = complex(n0, 0)
+
+total_error = 100
+iter = 0
+while total_error > 0.1 and iter < 1000:
+    theta1 = sm.get_theta_out(1, n0, theta0)
+    model = hs.half_space_model(e0[:stop_index], ref_freq[:stop_index], n0, d, theta0, theta1)
+
+    true_phase = np.unwrap(np.angle(e2[:stop_index]))
+    model_phase = np.unwrap(np.angle(model[:stop_index]))
+
+    true_magnitude = np.abs(e2[:stop_index])
+    model_magnitude = np.abs(model[:stop_index])
+
+    phase_error = true_phase - model_phase
+    magnitude_error = true_magnitude - model_magnitude
+
+    n_new = n0.real + 0.001 * phase_error[30]
+    k_new = n0.imag + 0.001 * magnitude_error[30]
+
+    total_error = np.abs(magnitude_error[30]) + np.abs(phase_error[30])
+
+    n0 = complex(n_new, k_new)
+
+    iter += 1
+
+pdb.set_trace()
+
+# number of samples to use in each row of the sampling plan
 n_samples = 6
 
 t0 = time.time()
@@ -204,10 +241,19 @@ mlab.surf(ni_bounds, nr_bounds, np.rot90(cost, -1), warp_scale='auto')
 mlab.colorbar()
 
 plt.figure('Parabolic Approximation of Cost Function')
-plt.imshow(parabolic_fit, aspect='auto', interpolation='none', extent=extent)
+im = plt.imshow(parabolic_fit, aspect='auto', interpolation='none', extent=extent)
+plt.scatter(x=n_parab.imag, y=n_parab.real, color='r', label='Minimum')
 plt.xlabel(r'$\kappa$', fontsize=14)
 plt.ylabel(r'$n$', fontsize=14)
-plt.colorbar()
+plt.colorbar(im)
+plt.grid()
+
+plt.figure('Typical Waveform')
+plt.plot(data.time, data.waveform[location[0], location[1], :], 'r')
+plt.axvline(data.time[gate1], color='k', linestyle='--')
+plt.title('Typical Waveform')
+plt.xlabel('Time (ps)')
+plt.ylabel('Amplitude')
 plt.grid()
 
 plt.show()
