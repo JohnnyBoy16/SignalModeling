@@ -6,24 +6,24 @@ The cost function has been provided as pickled data which must be loaded in.
 import pdb
 import sys
 import time
+import pickle
 
 import numpy as np
 import matplotlib.pyplot as plt
 from mayavi import mlab
-import pyDOE
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, minimize
 
 import sm_functions as sm
 import half_space as hs
 import util
 
 # load in THzDataClass that I created
-sys.path.insert(0, 'D:\\Python\\THzProcClass')
+sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
 from THzData import THzData
 
 
-ref_file = 'D:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
-tvl_file = 'D:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
+ref_file = 'C:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
+tvl_file = 'C:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
 
 # range of real and imaginary values to build the cost function over
 nr_bounds = np.linspace(4.25, 1, 250)
@@ -94,18 +94,29 @@ data.freq_waveform = np.fft.rfft(data.gated_waveform, axis=2) * data.delta_t
 # experimental data from a point on the scan
 e2 = data.freq_waveform[location[0], location[1], :]
 
-# build the cost function over the bounds
-for i, nr in enumerate(nr_bounds):
-    print(i)
-    for j, ni in enumerate(ni_bounds):
-        n = np.array([nr, ni])
+t0 = time.time()
 
-        raw_cost = \
-            hs.half_space_mag_phase_equation(n, e0[:stop_index], e2[:stop_index],
-                                             ref_freq[:stop_index], d, theta0)
+try:
+    with open('total_cost.pickle', 'rb') as f:
+        cost = pickle.load(f)
+    f.close()
 
-        # try to emulate least squares
-        cost[i, j] = np.sum(raw_cost)
+except FileNotFoundError:
+    # build the cost function over the bounds
+    for i, nr in enumerate(nr_bounds):
+        # print(i)
+        for j, ni in enumerate(ni_bounds):
+            n = np.array([nr, ni])
+
+            raw_cost = \
+                hs.half_space_mag_phase_equation(n, e0[:stop_index], e2[:stop_index],
+                                                 ref_freq[:stop_index], d, theta0)[30]
+
+            # try to emulate least squares
+            cost[i, j] = np.sum(raw_cost)
+
+    with open('total_cost.pickle', 'wb') as f:
+        pickle.dump(cost, f)
 
 cost_min_coords = np.argmin(cost)
 cost_min_coords = np.unravel_index(cost_min_coords, cost.shape)
@@ -115,8 +126,12 @@ n_hat_real = nr_bounds[cost_min_coords[0]]
 n_hat_imag = ni_bounds[cost_min_coords[1]]
 n_hat = n_hat_real + 1j * n_hat_imag
 
+t1 = time.time()
+print('Brute Force Search Time = %0.4f seconds' % (t1-t0))
+print(n_hat)
+
 # number of samples to use in the latin hypercube
-n_samples = 4
+n_samples = 6
 
 t0 = time.time()
 
@@ -140,18 +155,34 @@ for i in range(n_samples**2):
     n = sample_points[:, i]
 
     raw_cost = hs.half_space_mag_phase_equation(n, e0[:stop_index], e2[:stop_index],
-                                                ref_freq[:stop_index], d, theta0)
+                                                ref_freq[:stop_index], d, theta0)[30]
 
     sampled_values[i] = np.sum(raw_cost)
 
-popt, pcov = curve_fit(util.parabolic_equation, sample_points, sampled_values)
+p0 = (-0.1, 4.167e-3, 50, 1.7, 3.8676e-3)
+popt, pcov = curve_fit(util.parabolic_equation, sample_points, sampled_values, maxfev=2500)
+
+n_guess = np.array([2.5, -1])
+result = minimize(util.parabolic_equation, n_guess, args=(popt[0], popt[1], popt[2], popt[3],
+                                                          popt[4]))
+n_model_sol = result.x
 
 nr_meshed, ni_meshed = np.meshgrid(nr_bounds, ni_bounds, indexing='ij')
 n_meshed = np.array([nr_meshed, ni_meshed])
 parabolic_fit = util.parabolic_equation(n_meshed, *popt)
 
+best_fit_min_coords = np.unravel_index(parabolic_fit.argmin(), parabolic_fit.shape)
+
+# estimate of n from brute force search
+n_parab_real = nr_bounds[best_fit_min_coords[0]]
+n_parab_imag = ni_bounds[best_fit_min_coords[1]]
+n_parab = n_parab_real + 1j * n_parab_imag
+
 t1 = time.time()
-print('Total Time:', t1-t0)
+
+print()
+print('Time to build parabolic model and minimize:', t1-t0)
+print(n_parab)
 
 # use extent to set the values on the axis label for plotting
 extent = (ni_bounds[0], ni_bounds[-1], nr_bounds[-1], nr_bounds[0])
@@ -164,7 +195,6 @@ plt.xlabel(r'$\kappa$', fontsize=14)
 plt.ylabel(r'$n$', fontsize=14)
 plt.colorbar(im)
 plt.legend()
-# plt.xlim(0, ni_bounds[-1])
 plt.grid()
 
 # currently axis labels on mlab figure don't seem to be working

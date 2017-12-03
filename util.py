@@ -1,3 +1,6 @@
+import pdb
+
+import numpy as np
 
 
 def parabolic_equation(data, a, b, c, d, e):
