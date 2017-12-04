@@ -18,12 +18,12 @@ import half_space as hs
 import util
 
 # load in THzDataClass that I created
-sys.path.insert(0, 'D:\\PycharmProjects\\THzProcClass')
+sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
 from THzData import THzData
 
 
-ref_file = 'D:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
-tvl_file = 'D:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
+ref_file = 'C:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
+tvl_file = 'C:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
 
 # range of real and imaginary values to build the cost function over
 nr_bounds = np.linspace(4.25, 1, 250)
@@ -130,42 +130,57 @@ t1 = time.time()
 print('Brute Force Search Time = %0.4f seconds' % (t1-t0))
 print(n_hat)
 
+t0 = time.time()
 # try optimizing the true function and see how long it takes
 # determine the time of flight between the front and back surface echos
-t0 = data.time[data.waveform[location[0], location[1], :].argmax()]
-t1 = data.time[data.waveform[location[0], location[1], gate1:].argmax() + gate1]
+FSE = data.time[data.waveform[location[0], location[1], :].argmax()]
+BSE = data.time[data.waveform[location[0], location[1], gate1:].argmax() + gate1]
 
 # since we know the thickness of the sample, we can use that to get a first estimate of the index
 # of refraction, initial estimate assumes no angle of incidence
-c_sample = 2*d / (t1-t0)  # estimate of speed of light in the material
+c_sample = 2*d / (BSE-FSE)  # estimate of speed of light in the material
 n0 = c / c_sample  # initial guess for n_real
 n0 = complex(n0, 0)
+print()
+print('Initial Guess =', n0)
 
-total_error = 100
-iter = 0
-while total_error > 0.1 and iter < 1000:
-    theta1 = sm.get_theta_out(1, n0, theta0)
+max_iter = 5000
+precision = 1e-4
+gamma = 0.001
+n_iter = 0
+
+n_step = n0.real
+k_step = n0.real
+
+while (n_step > precision or k_step > precision) and n_iter < max_iter:
+    prev_n = n0.real
+    prev_k = n0.imag
+
+    theta1 = sm.get_theta_out(1.0, n0, theta0)
     model = hs.half_space_model(e0[:stop_index], ref_freq[:stop_index], n0, d, theta0, theta1)
 
-    true_phase = np.unwrap(np.angle(e2[:stop_index]))
-    model_phase = np.unwrap(np.angle(model[:stop_index]))
+    T_model = model / e0[:stop_index]
+    T_data = e2[:stop_index] / e0[:stop_index]
 
-    true_magnitude = np.abs(e2[:stop_index])
-    model_magnitude = np.abs(model[:stop_index])
+    # rho = np.unwrap(np.angle(e2[:stop_index]))[30] - np.unwrap(np.angle(model))[30]
+    # phi = np.log(np.abs(e2[:stop_index]))[30] - np.log(np.abs(model))[30]
 
-    phase_error = true_phase - model_phase
-    magnitude_error = true_magnitude - model_magnitude
+    rho = np.unwrap(np.angle(T_data[:stop_index]))[30] - np.unwrap(np.angle(T_model))[30]
+    phi = np.log(np.abs(T_data[:stop_index]))[30] - np.log(np.abs(T_model))[30]
 
-    n_new = n0.real + 0.001 * phase_error[30]
-    k_new = n0.imag + 0.001 * magnitude_error[30]
+    new_n = prev_n + gamma * rho**2
+    new_k = prev_k - gamma * phi**2
 
-    total_error = np.abs(magnitude_error[30]) + np.abs(phase_error[30])
+    n_step = np.abs(new_n - prev_n)
+    k_step = np.abs(new_k - prev_k)
 
-    n0 = complex(n_new, k_new)
+    n0 = complex(new_n, new_k)  # update n0
 
-    iter += 1
+    n_iter += 1
 
-pdb.set_trace()
+t1 = time.time()
+print('Time for gradient descent on true function = %0.4f' % (t1-t0))
+print(n0)
 
 # number of samples to use in each row of the sampling plan
 n_samples = 6
