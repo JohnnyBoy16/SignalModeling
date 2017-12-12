@@ -18,12 +18,11 @@ import half_space as hs
 import util
 
 # load in THzDataClass that I created
-sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
+sys.path.insert(0, 'D:\\PycharmProjects\\THzProcClass')
 from THzData import THzData
 
-
-ref_file = 'C:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
-tvl_file = 'C:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
+ref_file = 'D:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
+tvl_file = 'D:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
 
 # range of real and imaginary values to build the cost function over
 nr_bounds = np.linspace(4.25, 1, 250)
@@ -115,8 +114,8 @@ except FileNotFoundError:
             # try to emulate least squares
             cost[i, j] = np.sum(raw_cost)
 
-    with open('total_cost.pickle', 'wb') as f:
-        pickle.dump(cost, f)
+    # with open('total_cost.pickle', 'wb') as f:
+    #     pickle.dump(cost, f)
 
 cost_min_coords = np.argmin(cost)
 cost_min_coords = np.unravel_index(cost_min_coords, cost.shape)
@@ -233,6 +232,10 @@ print()
 print('Time to build parabolic model and minimize:', t1-t0)
 print(n_parab)
 
+mse = np.abs(parabolic_fit - cost)
+mse = np.sum(mse) / mse.size
+print('Mean squared error for parabolic fit:', mse)
+
 # use extent to set the values on the axis label for plotting
 extent = (ni_bounds[0], ni_bounds[-1], nr_bounds[-1], nr_bounds[0])
 
@@ -242,6 +245,17 @@ plt.scatter(x=n_hat_imag, y=n_hat_real, color='r', label='Brute Force')
 # plt.scatter(x=sample_points[1, :], y=sample_points[0, :], color='k', label='Sample Points')
 plt.scatter(x=n0.imag, y=n0.real, color='c', label='Gradient Descent')
 plt.scatter(x=n_parab.imag, y=n_parab.real, color='y', label='Parabolic Fit')
+plt.xlabel(r'$\kappa$', fontsize=14)
+plt.ylabel(r'$n$', fontsize=14)
+plt.colorbar(im)
+plt.legend()
+plt.grid()
+
+
+plt.figure('Cost Function vs n with sample points')
+im = plt.imshow(cost, aspect='auto', interpolation='none', extent=extent)
+plt.scatter(x=n_hat_imag, y=n_hat_real, color='r', label='Min Value Location')
+plt.scatter(x=sample_points[1, :], y=sample_points[0, :], color='k', label='Sample Points')
 plt.xlabel(r'$\kappa$', fontsize=14)
 plt.ylabel(r'$n$', fontsize=14)
 plt.xlim(ni_bounds[0], ni_bounds[-1])
@@ -261,13 +275,13 @@ im = plt.imshow(parabolic_fit, aspect='auto', interpolation='none', extent=exten
 plt.scatter(x=n_parab.imag, y=n_parab.real, color='r', label='Minimum')
 plt.xlabel(r'$\kappa$', fontsize=14)
 plt.ylabel(r'$n$', fontsize=14)
+plt.legend()
 plt.colorbar(im)
 plt.grid()
 
 plt.figure('Typical Waveform')
 plt.plot(data.time, data.waveform[location[0], location[1], :], 'r')
-plt.axvline(data.time[gate1], color='k', linestyle='--')
-plt.title('Typical Waveform')
+# plt.axvline(data.time[gate1], color='k', linestyle='--')
 plt.xlabel('Time (ps)')
 plt.ylabel('Amplitude')
 plt.grid()
