@@ -16,7 +16,7 @@ import half_space as hs
 sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
 import THzData
 
-ref_file = ''
+ref_file = 'D:\\Refs\\ref 11DEC2017\\60 ps waveform.txt'
 tvl_file = ''
 
 # if we want to solve over the entire sample use None
