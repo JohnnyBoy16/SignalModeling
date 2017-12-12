@@ -13,15 +13,15 @@ from mayavi import mlab
 import sm_functions as sm
 import half_space as hs
 
-sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
+sys.path.insert(0, 'D:\\PycharmProjects\\THzProcClass')
 import THzData
 
 ref_file = 'D:\\Refs\\ref 11DEC2017\\60 ps waveform.txt'
 tvl_file = ''
 
 # if we want to solve over the entire sample use None
-# location_list = None
-location_list = np.array([[78, 80]])
+location_list = None
+# location_list = np.array([[78, 80]])
 
 # use flag = 1 for half space model to match nr and ni
 #          = 2 for half space model to match magnitude and phase
@@ -67,7 +67,7 @@ gate2 = 2784
 extent = (ni_guess[0], ni_guess[-1], nr_guess[-1], nr_guess[0])
 
 ref_time, ref_amp = sm.read_reference_data(ref_file)
-data = THzData.THzData(tvl_file, gate=[[gate1, gate2], [700, 900]])
+data = THzData.THzData(tvl_file, gate=[[100, 1000], [700, 900]])
 
 # adjust time arrays so initial data point is zero
 ref_time -= ref_time[0]
@@ -83,7 +83,7 @@ e0[gate0-1] = e0[gate0] / 2  # add ramp up factor to help FFT
 
 e0_gated = copy.deepcopy(e0)
 
-data.resize(-11.75, 12.25, -12, 12)
+data.resize(-5, 5, -5, 5)
 
 # slice out the area around the back surface echo and add a ramp factor to help fft
 data.gated_waveform = np.zeros(data.waveform_small.shape)
@@ -100,9 +100,8 @@ plt.ylabel('Amplitude')
 plt.grid()
 
 plt.figure('C-Scan Small')
-plt.imshow(data.c_scan_small, interpolation='none', cmap='gray')
+plt.imshow(data.c_scan_small, interpolation='none', cmap='gray', extent=data.small_extent)
 plt.grid()
-
 pdb.set_trace()
 e0_gated = -1 * np.fft.rfft(e0_gated) * dt
 
@@ -128,8 +127,8 @@ if location_list is not None:  # add starting exponential to waveforms in locati
         data.freq_waveform[loc[0], loc[1], :] = sm.smooth_exponential_transition(wave, data.delta_f)
 
 else:  # add starting exponential to all waveforms
-    for i in range(data.y_step):
-        for j in range(data.x_step):
+    for i in range(len(data.y_small)):
+        for j in range(len(data.x_small)):
             wave = data.freq_waveform[i, j, :]
             data.freq_waveform[i, j, :] = sm.smooth_exponential_transition(wave, data.delta_f)
 
@@ -163,8 +162,8 @@ if location_list is None:
     i0 = np.argmax(data.waveform, axis=2)
     t0 = data.time[i0]
     t_diff = t0 - ref_t0
-    for i in range(data.y_step):
-        for j in range(data.x_step):
+    for i in range(len(data.y_small)):
+        for j in range(len(data.x_small)):
             data.freq_waveform[i, j, :] *= np.exp(1j*2*np.pi*data.freq*t_diff[i, j])
 
 else:  # location_list is not None; just time shift each point we are looking at
@@ -323,15 +322,15 @@ if location_list is None and brute_force_on:
         fig_string = 'Real Test %d' % i
         plt.figure(fig_string)
         plt.imshow(n_solution[:, :, i].real, interpolation='none', vmin=1.0,
-                   extent=data.c_scan_extent)
-        plt.xlabel('X Scan Location')
-        plt.ylabel('Y Scan Location')
+                   extent=data.small_extent)
+        plt.xlabel('X Scan Location (mm)')
+        plt.ylabel('Y Scan Location (mm)')
         plt.grid()
         plt.colorbar()
 
         fig_string = 'Imaginary Test %d' % i
         plt.figure(fig_string)
-        plt.imshow(n_solution[:, :, i].imag, interpolation='none', extent=data.c_scan_extent)
+        plt.imshow(n_solution[:, :, i].imag, interpolation='none', extent=data.small_extent)
         plt.xlabel('X Scan Location (mm)')
         plt.ylabel('Y Scan Location (mm)')
         plt.grid()

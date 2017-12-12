@@ -17,7 +17,8 @@ def half_space_main(e0, data, location_list, freq, nr_list, ni_list, d, theta0, 
     if location_list is None:
         lsq_n = np.zeros((data.y_step, data.x_step, stop_index//step), dtype=complex)
         lsq_cost = np.zeros((data.y_step, data.x_step))
-        brute_force_n = np.zeros((data.y_step, data.x_step, stop_index//step), dtype=complex)
+        brute_force_n = np.zeros((data.y_step_small, data.x_step_small, stop_index//step),
+                                 dtype=complex)
     else:  # location list is None, search every location
         lsq_n = np.zeros((len(location_list), stop_index//step), dtype=complex)
         lsq_cost = np.zeros(len(location_list))
@@ -66,13 +67,13 @@ def half_space_main(e0, data, location_list, freq, nr_list, ni_list, d, theta0, 
 
             # if location list is None perform a search over all points
         elif brute_force_on and location_list is None:
-            cost = np.zeros((data.y_step, data.x_step, len(nr_list), len(ni_list),
+            cost = np.zeros((data.y_step_small, data.x_step_small, len(nr_list), len(ni_list),
                              stop_index//step))
 
-            for y in range(data.y_step):
-                print('Row %d of %d' % (y+1, data.y_step))
-                for x in range(data.x_step):
-                    print('Point %d of %d' % (x+1, data.x_step))
+            for y in range(data.y_step_small):
+                print('Row %d of %d' % (y+1, data.y_step_small))
+                for x in range(data.x_step_small):
+                    # print('Point %d of %d' % (x+1, data.x_step_small))
 
                     e2 = copy.deepcopy(data.freq_waveform[y, x, :])
                     cost[y, x, :, :, :] = brute_force_search(
@@ -92,8 +93,8 @@ def half_space_main(e0, data, location_list, freq, nr_list, ni_list, d, theta0, 
 
     elif brute_force_on and location_list is None:
         # determine the minimum cost of each brute force search
-        for y in range(data.y_step):
-            for x in range(data.x_step):
+        for y in range(data.y_step_small):
+            for x in range(data.x_step_small):
                 for k in range(stop_index // step):
                     min_coords = np.argmin(cost[y, x, :, :, k])
                     # calculate min location and use unravel_index to give correct coordinates
