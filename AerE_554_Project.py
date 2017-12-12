@@ -1,7 +1,7 @@
 """
-Code for AerE 554 Project 1. I am attempting to fit a parabola to a cost function and extract the
+Code for AerE 554 Project. I am attempting to fit a parabola to a cost function and extract the
 material parameters (n & k, real and imaginary parts of index of refraction) from a test sample.
-The cost function has been provided as pickled data which must be loaded in.
+The cost function can been provided as pickled data which must be loaded in.
 """
 import pdb
 import sys
@@ -162,9 +162,6 @@ while (n_step > precision or k_step > precision) and n_iter < max_iter:
     T_model = model / e0[:stop_index]
     T_data = e2[:stop_index] / e0[:stop_index]
 
-    # rho = np.unwrap(np.angle(e2[:stop_index]))[30] - np.unwrap(np.angle(model))[30]
-    # phi = np.log(np.abs(e2[:stop_index]))[30] - np.log(np.abs(model))[30]
-
     rho = np.unwrap(np.angle(T_data[:stop_index]))[30] - np.unwrap(np.angle(T_model))[30]
     phi = np.log(np.abs(T_data[:stop_index]))[30] - np.log(np.abs(T_model))[30]
 
@@ -241,10 +238,14 @@ extent = (ni_bounds[0], ni_bounds[-1], nr_bounds[-1], nr_bounds[0])
 
 plt.figure('Cost Function vs n')
 im = plt.imshow(cost, aspect='auto', interpolation='none', extent=extent)
-plt.scatter(x=n_hat_imag, y=n_hat_real, color='r', label='Min Value Location')
-plt.scatter(x=sample_points[1, :], y=sample_points[0, :], color='k', label='Sample Points')
+plt.scatter(x=n_hat_imag, y=n_hat_real, color='r', label='Brute Force')
+# plt.scatter(x=sample_points[1, :], y=sample_points[0, :], color='k', label='Sample Points')
+plt.scatter(x=n0.imag, y=n0.real, color='c', label='Gradient Descent')
+plt.scatter(x=n_parab.imag, y=n_parab.real, color='y', label='Parabolic Fit')
 plt.xlabel(r'$\kappa$', fontsize=14)
 plt.ylabel(r'$n$', fontsize=14)
+plt.xlim(ni_bounds[0], ni_bounds[-1])
+plt.ylim(nr_bounds[-1], nr_bounds[0])
 plt.colorbar(im)
 plt.legend()
 plt.grid()

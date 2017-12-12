@@ -8,13 +8,11 @@ import sm_functions as sm
 
 
 def half_space_main(e0, data, location_list, freq, nr_list, ni_list, d, theta0, step,
-                    stop_index, lb, ub, flag, brute_force_on, lsq_on, radius, c=0.2998):
+                    stop_index, lb, ub, flag, brute_force_on, lsq_on, c=0.2998):
 
     if flag != 1 and flag != 2:
         string = 'For Half Space Model, flag must be either 1 or 2! Flag is %d' % flag
         raise ValueError(string)
-
-    center = np.array([data.y_step//2, data.x_step//2])
 
     if location_list is None:
         lsq_n = np.zeros((data.y_step, data.x_step, stop_index//step), dtype=complex)
@@ -76,11 +74,6 @@ def half_space_main(e0, data, location_list, freq, nr_list, ni_list, d, theta0, 
                 for x in range(data.x_step):
                     print('Point %d of %d' % (x+1, data.x_step))
 
-                    distance = np.sqrt((center[0]-y)**2 + (center[1]-x)**2)
-                    # if point is larger radius (outside of PE disk), move on to next
-                    if distance > radius:
-                        continue
-                    # otherwise
                     e2 = copy.deepcopy(data.freq_waveform[y, x, :])
                     cost[y, x, :, :, :] = brute_force_search(
                         e0, e2, freq, nr_list, ni_list, d, theta0, step, stop_index, lb, ub, c)
@@ -147,6 +140,7 @@ def half_space_model(e0, freq, n, d, theta0, theta1, c=0.2998):
     t10 = sm.transmission_coefficient(n, 1.0, theta1, theta0)
 
     r10 = sm.reflection_coefficient(n, 1.0, theta1, theta0)
+    r10 = -1  # account for perfect reflection off of substrate
 
     # t_delay also include imaginary n value, so signal should decrease
     t_delay = 2 * n*d / (c*np.cos(theta1))  # factor of two accounts for back and forth travel

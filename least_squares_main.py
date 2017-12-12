@@ -13,42 +13,19 @@ from mayavi import mlab
 import sm_functions as sm
 import half_space as hs
 
-sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass3')
-from THzData import THzData
+sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
+import THzData
 
-# ref_file = 'D:\\Work\\Signal Modeling\\References\\ref 12JUN2017\\60 ps waveform.txt'
-# tvl_file = 'D:\\Work\\Signal Modeling\\THz Data\\HDPE Lens\\Smooth Side (res=0.5mm, OD=60ps).tvl'
-ref_file = 'C:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
-tvl_file = 'C:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
+ref_file = ''
+tvl_file = ''
 
 # if we want to solve over the entire sample use None
 # location_list = None
-# location list for PE Window
-# location_list = np.array([[37, 34],
-#                           [28, 28],
-#                           [45, 45],
-#                           [40, 40],
-#                           [30, 24],
-#                           [11, 34],
-#                           [58, 28]])
-
-# location list for yellow shim stock
-location_list = np.array([[8, 32],
-                          [16, 5],
-                          [17, 35],
-                          [9, 17],
-                          [5, 8],
-                          [2, 34],
-                          [7, 3]])
-# location_list = None
+location_list = np.array([[78, 80]])
 
 # use flag = 1 for half space model to match nr and ni
 #          = 2 for half space model to match magnitude and phase
 flag = 2
-
-# diameter = 32  # diameter of the PE disk in mm
-diameter = 32
-radius = diameter / 2
 
 nr_guess = np.linspace(1.00, 4.25, 50)
 ni_guess = np.linspace(-0.001, -0.25, 50)
@@ -56,13 +33,10 @@ ni_guess = np.linspace(-0.001, -0.25, 50)
 # ni_guess = np.linspace(-0.001, -0.25, 200)
 
 # thickness of layer(s) in mm
-# thickness of PE disk is 3.15 mm
-# thickness of black shim stock is 0.3175 mm
-# thickness of the yellow shim stock is 0.508 mm
-d = np.array([0.508])
+d = np.array([1.02])  # guess for the thickness of the abradable coating
 
 brute_force_on = True
-lsq_on = True
+lsq_on = False
 
 # the number of frequency indices to consider having the same index of refraction
 # if step is None only solve for 1 value
@@ -86,12 +60,14 @@ theta0 = 17.5 * np.pi / 180.0
 # indices to slice the waveform, gate the front and back surface echos
 # this removes the initial "blip" and cuts out the water vapor noise in the middle
 # produces a much smoother spectrum
-cuts = np.loadtxt('shim_stock_gates.txt', dtype=int)
+gate0 = 367
+gate1 = 1612
+gate2 = 2784
 
 extent = (ni_guess[0], ni_guess[-1], nr_guess[-1], nr_guess[0])
 
 ref_time, ref_amp = sm.read_reference_data(ref_file)
-data = THzData(tvl_file)
+data = THzData.THzData(tvl_file, gate=[[gate1, gate2], [700, 900]])
 
 # adjust time arrays so initial data point is zero
 ref_time -= ref_time[0]
@@ -102,17 +78,18 @@ df = 1 / (len(ref_time) * dt)
 freq = np.linspace(0, len(ref_time) / 2 * df, len(ref_time)//2+1)
 
 e0 = copy.deepcopy(ref_amp)  # e0 will be the negative of reference from aluminum plate
-e0[:cuts[0]] = 0  # make everything before cut index zero to remove blip
-e0[cuts[0]-1] = e0[cuts[0]] / 2  # add ramp up factor to help FFT
+e0[:gate0] = 0  # make everything before cut index zero to remove blip
+e0[gate0-1] = e0[gate0] / 2  # add ramp up factor to help FFT
 
-e0_gated = np.zeros(e0.shape)
-e0_gated[cuts[0]:cuts[1]] = e0[cuts[0]:cuts[1]]
+e0_gated = copy.deepcopy(e0)
+
+data.resize(-11.75, 12.25, -12, 12)
 
 # slice out the area around the back surface echo and add a ramp factor to help fft
-data.gated_waveform = np.zeros(data.waveform.shape)
-data.gated_waveform[:, :, cuts[2]:cuts[3]] = data.waveform[:, :, cuts[2]:cuts[3]]
-data.gated_waveform[:, :, cuts[2]-1] = data.gated_waveform[:, :, cuts[2]-1] / 2
-data.gated_waveform[:, :, cuts[3]] = data.gated_waveform[:, :, cuts[3]-1] / 2
+data.gated_waveform = np.zeros(data.waveform_small.shape)
+data.gated_waveform[:, :, gate1:gate2] = data.waveform_small[:, :, gate1:gate2]
+data.gated_waveform[:, :, gate1-1] = data.waveform_small[:, :, gate1-1] / 2
+data.gated_waveform[:, :, gate2] = data.waveform_small[:, :, gate2-1] / 2
 
 # multiply by -1 to recover original signal, reference was obtained from aluminum plate with
 # reflection coefficient assumed to be -1
@@ -122,6 +99,11 @@ plt.xlabel('Time (ps)')
 plt.ylabel('Amplitude')
 plt.grid()
 
+plt.figure('C-Scan Small')
+plt.imshow(data.c_scan_small, interpolation='none', cmap='gray')
+plt.grid()
+
+pdb.set_trace()
 e0_gated = -1 * np.fft.rfft(e0_gated) * dt
 
 data.freq_waveform = np.fft.rfft(data.gated_waveform, axis=2) * data.delta_t
@@ -137,8 +119,6 @@ stop_index = np.argmin(np.abs(freq - max_f))  # index closest to max_freq
 # this prevents the low frequency data from having a larger sample signal than reference signal
 e0_gated[:start_index] = 0.0
 e0_gated = sm.smooth_exponential_transition(e0_gated, df)
-
-radius = int(round(radius / data.x_res, 0))  # convert radius from mm to indices
 
 data.freq_waveform[:, :, :start_index] = 0.0
 
@@ -201,7 +181,7 @@ if flag == 1 or flag == 2:
     t0 = time.time()
     n_solution, lsq_n, cost, lsq_cost = \
         hs.half_space_main(e0_gated, data, location_list, freq, nr_guess, ni_guess, d, theta0, step,
-                           stop_index, lb, ub, flag, brute_force_on, lsq_on, radius)
+                           stop_index, lb, ub, flag, brute_force_on, lsq_on)
 
 elif flag == 3 or flag == 4:
     # flag == 3: use Orfanidis model trying to match nr & ni
@@ -308,9 +288,9 @@ if location_list is not None:
     plt.ylabel('Amplitude')
     plt.grid()
 
-    mlab.figure('Cost Function Example in 3D')
-    mlab.surf(cost[1, :, :, 0], warp_scale='auto')
-    mlab.colorbar()
+    # mlab.figure('Cost Function Example in 3D')
+    # mlab.surf(cost[1, :, :, 0], warp_scale='auto')
+    # mlab.colorbar()
 
     # build a model signal using the half space model solution to compare
     n1 = n_solution[0]
