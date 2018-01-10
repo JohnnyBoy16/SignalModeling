@@ -140,7 +140,7 @@ def half_space_model(e0, freq, n, d, theta0, theta1, c=0.2998):
     t01 = sm.transmission_coefficient(1.0, n, theta0, theta1)
     t10 = sm.transmission_coefficient(n, 1.0, theta1, theta0)
 
-    r10 = sm.reflection_coefficient(n, 1.0, theta1, theta0)
+    r01 = sm.reflection_coefficient(1.0, n, theta0, theta1)
     r10 = -1  # account for perfect reflection off of substrate
 
     # t_delay also include imaginary n value, so signal should decrease
@@ -148,7 +148,8 @@ def half_space_model(e0, freq, n, d, theta0, theta1, c=0.2998):
 
     shift = np.exp(-1j * 2*np.pi * freq * t_delay)
 
-    model = e0 * t01 * r10 * t10 * shift
+    # model = e0 * t01 * r10 * t10 * shift
+    model = e0 * r01
 
     return model
 

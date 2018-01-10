@@ -16,7 +16,7 @@ import half_space as hs
 sys.path.insert(0, 'D:\\PycharmProjects\\THzProcClass')
 import THzData
 
-ref_file = ''
+ref_file = 'F:\\Refs\\ref 11DEC2017\\60 ps waveform.txt'
 tvl_file = ''
 
 # if we want to solve over the entire sample use None
@@ -33,7 +33,8 @@ ni_guess = np.linspace(-0.001, -0.25, 50)
 # ni_guess = np.linspace(-0.001, -0.25, 200)
 
 # thickness of layer(s) in mm
-d = np.array([1.02])  # guess for the thickness of the abradable coating
+d = np.array([0.0])  # guess for the thickness of the abradable coating
+# thickness guess after intial grinding for abradable coating is 1.02 mm
 
 brute_force_on = True
 lsq_on = False
@@ -61,8 +62,9 @@ theta0 = 17.5 * np.pi / 180.0
 # this removes the initial "blip" and cuts out the water vapor noise in the middle
 # produces a much smoother spectrum
 gate0 = 367
-gate1 = 1612
-gate2 = 2784
+# gate1 = 1612
+# gate2 = 2784
+gate1 = 1160
 
 extent = (ni_guess[0], ni_guess[-1], nr_guess[-1], nr_guess[0])
 
@@ -83,13 +85,18 @@ e0[gate0-1] = e0[gate0] / 2  # add ramp up factor to help FFT
 
 e0_gated = copy.deepcopy(e0)
 
-data.resize(-5, 5, -5, 5)
+data.resize(-11.75, 12.25, -12, 12)
 
 # slice out the area around the back surface echo and add a ramp factor to help fft
 data.gated_waveform = np.zeros(data.waveform_small.shape)
-data.gated_waveform[:, :, gate1:gate2] = data.waveform_small[:, :, gate1:gate2]
-data.gated_waveform[:, :, gate1-1] = data.waveform_small[:, :, gate1-1] / 2
-data.gated_waveform[:, :, gate2] = data.waveform_small[:, :, gate2-1] / 2
+# data.gated_waveform[:, :, gate1:gate2] = data.waveform_small[:, :, gate1:gate2]
+# data.gated_waveform[:, :, gate1] = data.waveform_small[:, :, gate1-1] / 2
+# data.gated_waveform[:, :, gate2] = data.waveform_small[:, :, gate2-1] / 2
+
+# slice out the front surface echo of the sample and add a ramp up factor to help fft
+data.gated_waveform[:, :, gate0:gate1] = data.waveform_small[:, :, gate0:gate1]
+data.gated_waveform[:, :, gate0] = data.waveform_small[:, :, gate0] / 2
+data.gated_waveform[:, :, gate1] = data.waveform_small[:, :, gate1-1] / 2
 
 # multiply by -1 to recover original signal, reference was obtained from aluminum plate with
 # reflection coefficient assumed to be -1
@@ -102,7 +109,7 @@ plt.grid()
 plt.figure('C-Scan Small')
 plt.imshow(data.c_scan_small, interpolation='none', cmap='gray', extent=data.small_extent)
 plt.grid()
-pdb.set_trace()
+
 e0_gated = -1 * np.fft.rfft(e0_gated) * dt
 
 data.freq_waveform = np.fft.rfft(data.gated_waveform, axis=2) * data.delta_t
@@ -116,21 +123,21 @@ stop_index = np.argmin(np.abs(freq - max_f))  # index closest to max_freq
 
 # zero out everything before that starting index and add in a smooth exponential transition
 # this prevents the low frequency data from having a larger sample signal than reference signal
-e0_gated[:start_index] = 0.0
-e0_gated = sm.smooth_exponential_transition(e0_gated, df)
-
-data.freq_waveform[:, :, :start_index] = 0.0
+# e0_gated[:start_index] = 0.0
+# e0_gated = sm.smooth_exponential_transition(e0_gated, df)
+#
+# data.freq_waveform[:, :, :start_index] = 0.0
 
 if location_list is not None:  # add starting exponential to waveforms in location list only
     for loc in location_list:
         wave = data.freq_waveform[loc[0], loc[1], :]
         data.freq_waveform[loc[0], loc[1], :] = sm.smooth_exponential_transition(wave, data.delta_f)
 
-else:  # add starting exponential to all waveforms
-    for i in range(len(data.y_small)):
-        for j in range(len(data.x_small)):
-            wave = data.freq_waveform[i, j, :]
-            data.freq_waveform[i, j, :] = sm.smooth_exponential_transition(wave, data.delta_f)
+# else:  # add starting exponential to all waveforms
+#     for i in range(len(data.y_small)):
+#         for j in range(len(data.x_small)):
+#             wave = data.freq_waveform[i, j, :]
+#             data.freq_waveform[i, j, :] = sm.smooth_exponential_transition(wave, data.delta_f)
 
 # we want to make stop_index of multiple of step for easy looping later on
 if step is None:
@@ -159,9 +166,10 @@ t0 = time.clock()
 # For information on time shifting see Brigham's book "The Fast Fourier Transform" section 3-5.
 ref_t0 = ref_time[np.argmax(ref_amp)]
 if location_list is None:
-    i0 = np.argmax(data.waveform, axis=2)
+    i0 = np.argmax(data.waveform_small, axis=2)
     t0 = data.time[i0]
     t_diff = t0 - ref_t0
+
     for i in range(len(data.y_small)):
         for j in range(len(data.x_small)):
             data.freq_waveform[i, j, :] *= np.exp(1j*2*np.pi*data.freq*t_diff[i, j])
