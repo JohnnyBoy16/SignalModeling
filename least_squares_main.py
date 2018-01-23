@@ -13,11 +13,12 @@ from mayavi import mlab
 import sm_functions as sm
 import half_space as hs
 
-sys.path.insert(0, 'D:\\PycharmProjects\\THzProcClass')
+sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
 import THzData
 
 ref_file = 'D:\\Refs\\ref 11DEC2017\\60 ps waveform.txt'
-tvl_file = ''
+tvl_file = 'D:\\RR 2016\\THz Data\\Grinding Trial Sample\\1st Grind\\Sample 4-1 After 1st Polish ' \
+    'res=0.25mm.tvl'
 
 # if we want to solve over the entire sample use None
 location_list = None
@@ -27,6 +28,7 @@ location_list = None
 #          = 2 for half space model to match magnitude and phase
 flag = 2
 
+# guess ranges for brute force search
 nr_guess = np.linspace(1.00, 4.25, 50)
 ni_guess = np.linspace(-0.001, -0.25, 50)
 # nr_guess = np.linspace(1.60, 2.0, 200)
