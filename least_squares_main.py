@@ -8,7 +8,6 @@ import pdb
 
 import numpy as np
 import matplotlib.pyplot as plt
-from mayavi import mlab
 
 import sm_functions as sm
 import half_space as hs
@@ -16,17 +15,22 @@ import half_space as hs
 sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
 import THzData
 
-ref_file = 'D:\\Refs\\ref 11DEC2017\\60 ps waveform.txt'
-tvl_file = 'D:\\RR 2016\\THz Data\\Grinding Trial Sample\\1st Grind\\Sample 4-1 After 1st Polish ' \
-    'res=0.25mm.tvl'
+# the reference file that is to be used in the calculation, must be of the same
+# time length and have same wavelength as the tvl data
+ref_file = 'C:\\Work\Refs\\ref 15AUG2017\\30 ps waveform.txt'
+
+basedir = 'C:\\Work\\Shim Stock'
+tvl_file = 'Orange Shim Stock.tvl'
 
 # if we want to solve over the entire sample use None
-location_list = None
-# location_list = np.array([[78, 80]])
-
-# use flag = 1 for half space model to match nr and ni
-#          = 2 for half space model to match magnitude and phase
-flag = 2
+# if you only want to calculate at select (i, j) locations provide the list as
+# numpy array
+# location_list = None
+location_list = np.array([[16, 4],
+                          [6, 51],
+                          [14, 52],
+                          [3, 30],
+                          [12, 19]])
 
 # guess ranges for brute force search
 nr_guess = np.linspace(1.00, 4.25, 50)
@@ -35,10 +39,10 @@ ni_guess = np.linspace(-0.001, -0.25, 50)
 # ni_guess = np.linspace(-0.001, -0.25, 200)
 
 # thickness of layer(s) in mm
-d = np.array([1.02])  # guess for the thickness of the abradable coating
+d = np.array([0.762])
 
 brute_force_on = True
-lsq_on = False
+lsq_on = True
 
 # the number of frequency indices to consider having the same index of refraction
 # if step is None only solve for 1 value
@@ -50,11 +54,7 @@ min_f = 0.05  # system response starts at 50 GHz
 colors = ['r', 'b', 'g', 'k', 'm', 'c', 'y']
 
 # maximum frequency that we are interested in
-if flag == 1 or flag == 2:
-    # max_f = 1.2
-    max_f = 2.5
-else:
-    max_f = 2.5
+max_f = 2.5
 
 # incoming angle of the THz beam
 theta0 = 17.5 * np.pi / 180.0
@@ -69,7 +69,7 @@ gate2 = 2784
 extent = (ni_guess[0], ni_guess[-1], nr_guess[-1], nr_guess[0])
 
 ref_time, ref_amp = sm.read_reference_data(ref_file)
-data = THzData.THzData(tvl_file, gate=[[100, 1000], [700, 900]])
+data = THzData.THzData(tvl_file, basedir, gate=[[100, 1000], [700, 900]])
 
 # adjust time arrays so initial data point is zero
 ref_time -= ref_time[0]
@@ -85,13 +85,13 @@ e0[gate0-1] = e0[gate0] / 2  # add ramp up factor to help FFT
 
 e0_gated = copy.deepcopy(e0)
 
-data.resize(-5, 5, -5, 5)
+# data.resize(-2.5, 2.5, -2.5, 2.5)
 
 # slice out the area around the back surface echo and add a ramp factor to help fft
-data.gated_waveform = np.zeros(data.waveform_small.shape)
-data.gated_waveform[:, :, gate1:gate2] = data.waveform_small[:, :, gate1:gate2]
-data.gated_waveform[:, :, gate1-1] = data.waveform_small[:, :, gate1-1] / 2
-data.gated_waveform[:, :, gate2] = data.waveform_small[:, :, gate2-1] / 2
+data.gated_waveform = np.zeros(data.waveform.shape)
+data.gated_waveform[:, :, gate1:gate2] = data.waveform[:, :, gate1:gate2]
+data.gated_waveform[:, :, gate1-1] = data.waveform[:, :, gate1-1] / 2
+data.gated_waveform[:, :, gate2] = data.waveform[:, :, gate2-1] / 2
 
 # multiply by -1 to recover original signal, reference was obtained from aluminum plate with
 # reflection coefficient assumed to be -1
@@ -101,13 +101,9 @@ plt.xlabel('Time (ps)')
 plt.ylabel('Amplitude')
 plt.grid()
 
-plt.figure('C-Scan Small')
-plt.imshow(data.c_scan_small, interpolation='none', cmap='gray', extent=data.small_extent)
-plt.grid()
-pdb.set_trace()
 e0_gated = -1 * np.fft.rfft(e0_gated) * dt
 
-data.freq_waveform = np.fft.rfft(data.gated_waveform, axis=2) * data.delta_t
+data.freq_waveform = np.fft.rfft(data.gated_waveform, axis=2) * data.dt
 
 # determine the index of freq that is closest to the minimum frequency value that we are
 # interested in
@@ -126,13 +122,13 @@ data.freq_waveform[:, :, :start_index] = 0.0
 if location_list is not None:  # add starting exponential to waveforms in location list only
     for loc in location_list:
         wave = data.freq_waveform[loc[0], loc[1], :]
-        data.freq_waveform[loc[0], loc[1], :] = sm.smooth_exponential_transition(wave, data.delta_f)
+        data.freq_waveform[loc[0], loc[1], :] = sm.smooth_exponential_transition(wave, data.df)
 
 else:  # add starting exponential to all waveforms
     for i in range(len(data.y_small)):
         for j in range(len(data.x_small)):
             wave = data.freq_waveform[i, j, :]
-            data.freq_waveform[i, j, :] = sm.smooth_exponential_transition(wave, data.delta_f)
+            data.freq_waveform[i, j, :] = sm.smooth_exponential_transition(wave, data.df)
 
 # we want to make stop_index of multiple of step for easy looping later on
 if step is None:
@@ -154,7 +150,7 @@ n_steps = stop_index // step
 lb = step // 2  # lower bound
 ub = step // 2 + 1  # upper bound
 
-t0 = time.clock()
+t0 = time.time()
 
 # time shift each waveform appropriately in the frequency domain. This should line up the argmax
 # of each waveform with the reference signal. This will hopefully help stabilize the solution.
@@ -176,18 +172,10 @@ else:  # location_list is not None; just time shift each point we are looking at
         print(t_diff)
         data.freq_waveform[loc[0], loc[1], :] *= np.exp(1j*2*np.pi*data.freq*t_diff)
 
-if flag == 1 or flag == 2:
-    # flag == 1: use half space model trying to match nr & ni
-    # flag == 2: use half space model trying to match magnitude and phase
-    t0 = time.time()
-    n_solution, lsq_n, cost, lsq_cost = \
-        hs.half_space_main(e0_gated, data, location_list, freq, nr_guess, ni_guess, d, theta0, step,
-                           stop_index, lb, ub, flag, brute_force_on, lsq_on)
-
-elif flag == 3 or flag == 4:
-    # flag == 3: use Orfanidis model trying to match nr & ni
-    # flag == 4: use Orfanidis model trying to match magnitude and phase
-    pass
+t0 = time.time()
+n_solution, lsq_n, cost, lsq_cost = \
+    hs.half_space_main(e0_gated, data, location_list, freq, nr_guess, ni_guess, d, theta0, step,
+                       stop_index, lb, ub, brute_force_on, lsq_on)
 
 t1 = time.time()
 print('Total Time: %0.4f' % (t1 - t0))
@@ -305,7 +293,7 @@ if location_list is not None:
 
     model = FSE + BSE
 
-    model = np.fft.irfft(model) / data.delta_t
+    model = np.fft.irfft(model) / data.dt
 
     plt.figure('Model Waveform from Brute Force Solution')
     plt.plot(data.time, model, 'r')

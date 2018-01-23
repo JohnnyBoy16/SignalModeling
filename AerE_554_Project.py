@@ -18,11 +18,15 @@ import half_space as hs
 import util
 
 # load in THzDataClass that I created
-sys.path.insert(0, 'D:\\PycharmProjects\\THzProcClass')
+sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
 from THzData import THzData
 
-ref_file = 'D:\\Work\\Signal Modeling\\References\\ref 18OCT2017\\30ps waveform.txt'
-tvl_file = 'D:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans\\Yellow Shim Stock.tvl'
+# the reference file that is to be used in the calculation, must be of the same
+# time length and have same wavelength as the tvl data
+ref_file = 'C:\\Work\Refs\\ref 15AUG2017\\30 ps waveform.txt'
+
+basedir = 'C:\\Work\\Shim Stock'
+tvl_file = 'Orange Shim Stock.tvl'
 
 # range of real and imaginary values to build the cost function over
 nr_bounds = np.linspace(4.25, 1, 250)
@@ -30,7 +34,7 @@ ni_bounds = np.linspace(-0.001, -2, 250)
 
 location = np.array([16, 5])  # index from which to extract values from tvl file
 
-d = np.array([0.508])  # thickness of the yellow shim stock in mm
+d = np.array([0.762])  # thickness of the yellow shim stock in mm
 
 c = 0.2998  # speed of light in mm / ps
 
@@ -48,7 +52,7 @@ theta0 = 17.5 * np.pi / 180
 
 # load the reference signal and tvl scan data
 ref_time, ref_amp = sm.read_reference_data(ref_file)
-data = THzData(tvl_file)
+data = THzData(tvl_file, basedir)
 
 # adjust ref_time so initial value is 0 ps
 ref_time -= ref_time[0]
@@ -88,7 +92,7 @@ data.gated_waveform[:, :, gate1-1] = data.gated_waveform[:, :, gate1-1] / 2
 data.gated_waveform[:, :, gate2] = data.gated_waveform[:, :, gate2-1] / 2
 
 # calculate frequency domain representation
-data.freq_waveform = np.fft.rfft(data.gated_waveform, axis=2) * data.delta_t
+data.freq_waveform = np.fft.rfft(data.gated_waveform, axis=2) * data.dt
 
 # experimental data from a point on the scan
 e2 = data.freq_waveform[location[0], location[1], :]
