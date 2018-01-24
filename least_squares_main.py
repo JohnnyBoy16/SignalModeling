@@ -122,10 +122,10 @@ stop_index = np.argmin(np.abs(freq - max_f))  # index closest to max_freq
 
 # zero out everything before that starting index and add in a smooth exponential transition
 # this prevents the low frequency data from having a larger sample signal than reference signal
-e0_gated[:start_index] = 0.0
-e0_gated = sm.smooth_exponential_transition(e0_gated, df)
-
-data.freq_waveform[:, :, :start_index] = 0.0
+# e0_gated[:start_index] = 0.0
+# e0_gated = sm.smooth_exponential_transition(e0_gated, df)
+#
+# data.freq_waveform[:, :, :start_index] = 0.0
 
 if location_list is not None:  # add starting exponential to waveforms in location list only
     for loc in location_list:
@@ -165,9 +165,10 @@ t0 = time.time()
 # For information on time shifting see Brigham's book "The Fast Fourier Transform" section 3-5.
 ref_t0 = ref_time[np.argmax(ref_amp)]
 if location_list is None:
-    i0 = np.argmax(data.waveform, axis=2)
+    i0 = np.argmax(data.waveform_small, axis=2)
     t0 = data.time[i0]
     t_diff = t0 - ref_t0
+
     for i in range(len(data.y_small)):
         for j in range(len(data.x_small)):
             data.freq_waveform[i, j, :] *= np.exp(1j*2*np.pi*data.freq*t_diff[i, j])
