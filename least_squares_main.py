@@ -17,7 +17,7 @@ import THzData
 
 # the reference file that is to be used in the calculation, must be of the same
 # time length and have same wavelength as the tvl data
-ref_file = 'C:\\Work\Refs\\ref 15AUG2017\\30 ps waveform.txt'
+ref_file = 'C:\\Work\Refs\\ref 15AUG2017\\30ps waveform2.txt'
 
 basedir = 'C:\\Work\\Shim Stock'
 tvl_file = 'Orange Shim Stock.tvl'
@@ -35,8 +35,6 @@ location_list = np.array([[16, 4],
 # guess ranges for brute force search
 nr_guess = np.linspace(1.00, 4.25, 50)
 ni_guess = np.linspace(-0.001, -0.25, 50)
-# nr_guess = np.linspace(1.60, 2.0, 200)
-# ni_guess = np.linspace(-0.001, -0.25, 200)
 
 # thickness of layer(s) in mm
 d = np.array([0.762])
@@ -51,6 +49,12 @@ step = None
 # minimum frequency that we are interested in
 min_f = 0.05  # system response starts at 50 GHz
 
+# gate to initialize the THzData class, want the echo of interest to be in the
+# follow gate. This allows us to use peak_bin to gate the area of interest in
+# the waveform, a gate of [[100, 1500], [690, 1585]] captures the front surface
+# echo in the lead gate and follow gate gets the back surface
+thz_gate = [[100, 1500], [690, 1585]]
+
 colors = ['r', 'b', 'g', 'k', 'm', 'c', 'y']
 
 # maximum frequency that we are interested in
@@ -63,13 +67,15 @@ theta0 = 17.5 * np.pi / 180.0
 # this removes the initial "blip" and cuts out the water vapor noise in the middle
 # produces a much smoother spectrum
 gate0 = 367
-gate1 = 1612
-gate2 = 2784
+
+# ==============================================================================
+# END SETTINGS
+# START PREPROCESSING
 
 extent = (ni_guess[0], ni_guess[-1], nr_guess[-1], nr_guess[0])
 
 ref_time, ref_amp = sm.read_reference_data(ref_file)
-data = THzData.THzData(tvl_file, basedir, gate=[[100, 1000], [700, 900]])
+data = THzData.THzData(tvl_file, basedir, gate=thz_gate, follow_gate_on=True)
 
 # adjust time arrays so initial data point is zero
 ref_time -= ref_time[0]
@@ -77,7 +83,7 @@ ref_time -= ref_time[0]
 # assume both have the same dt
 dt = ref_time[-1] / (len(ref_time) - 1)
 df = 1 / (len(ref_time) * dt)
-freq = np.linspace(0, len(ref_time) / 2 * df, len(ref_time)//2+1)
+freq = np.linspace(0, len(ref_time)/2*df, len(ref_time)//2+1)
 
 e0 = copy.deepcopy(ref_amp)  # e0 will be the negative of reference from aluminum plate
 e0[:gate0] = 0  # make everything before cut index zero to remove blip
@@ -87,7 +93,8 @@ e0_gated = copy.deepcopy(e0)
 
 # data.resize(-2.5, 2.5, -2.5, 2.5)
 
-# slice out the area around the back surface echo and add a ramp factor to help fft
+# slice out the area around the back surface echo
+# using peak_bin prevents us from using numpy slicing though
 data.gated_waveform = np.zeros(data.waveform.shape)
 data.gated_waveform[:, :, gate1:gate2] = data.waveform[:, :, gate1:gate2]
 data.gated_waveform[:, :, gate1-1] = data.waveform[:, :, gate1-1] / 2
@@ -95,8 +102,9 @@ data.gated_waveform[:, :, gate2] = data.waveform[:, :, gate2-1] / 2
 
 # multiply by -1 to recover original signal, reference was obtained from aluminum plate with
 # reflection coefficient assumed to be -1
-plt.figure('Reference Waveform: Gated')
-plt.plot(ref_time, e0_gated, 'r')
+plt.figure('Reference Waveform with Gate')
+plt.plot(ref_time, ref_amp, 'r')
+plt.axvline(ref_time[gate0], linestyle='--', color='k')
 plt.xlabel('Time (ps)')
 plt.ylabel('Amplitude')
 plt.grid()
