@@ -12,32 +12,32 @@ import matplotlib.pyplot as plt
 import sm_functions as sm
 import half_space as hs
 
-sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
+sys.path.insert(0, 'D:\\PycharmProjects\\THzProcClass')
 import THzData
 
 # the reference file that is to be used in the calculation, must be of the same
 # time length and have same wavelength as the tvl data
-ref_file = 'C:\\Work\Refs\\ref 15AUG2017\\30ps waveform2.txt'
+ref_file = 'D:\\Work\\Refs\\ref 18OCT2017\\30ps waveform.txt'
 
-basedir = 'C:\\Work\\Shim Stock'
-tvl_file = 'Orange Shim Stock.tvl'
+basedir = 'D:\\Work\\Signal Modeling\\THz Data\\Shim Stock\\New Scans'
+tvl_file = 'Yellow Shim Stock.tvl'
 
 # if we want to solve over the entire sample use None
 # if you only want to calculate at select (i, j) locations provide the list as
 # numpy array
 # location_list = None
-location_list = np.array([[16, 4],
-                          [6, 51],
-                          [14, 52],
-                          [3, 30],
-                          [12, 19]])
+location_list = np.array([[9, 23],
+                          [13, 15],
+                          [2, 1],
+                          [17, 34],
+                          [16, 7]])
 
 # guess ranges for brute force search
 nr_guess = np.linspace(1.00, 4.25, 50)
 ni_guess = np.linspace(-0.001, -0.25, 50)
 
 # thickness of layer(s) in mm
-d = np.array([0.762])
+d = np.array([0.508])
 
 brute_force_on = True
 lsq_on = True
@@ -95,10 +95,18 @@ e0_gated = copy.deepcopy(e0)
 
 # slice out the area around the back surface echo
 # using peak_bin prevents us from using numpy slicing though
+# TODO perhaps not, look into this
+pdb.set_trace()
 data.gated_waveform = np.zeros(data.waveform.shape)
-data.gated_waveform[:, :, gate1:gate2] = data.waveform[:, :, gate1:gate2]
-data.gated_waveform[:, :, gate1-1] = data.waveform[:, :, gate1-1] / 2
-data.gated_waveform[:, :, gate2] = data.waveform[:, :, gate2-1] / 2
+for i in range(data.y_step):
+    for j in range(data.x_step):
+        start = data.peak_bin[3, 1, i, j]
+        end = data.peak_bin[4, 1, i, j]
+        data.gated_waveform[i, j, start:end] = data.waveform[i, j, start:end]
+
+        # add ramp up factor
+        data.gated_waveform[i, j, start-1] = data.waveform[i, j, start] / 2
+        data.gated_waveform[i, j, end] = data.waveform[i, j, end-1] / 2
 
 # multiply by -1 to recover original signal, reference was obtained from aluminum plate with
 # reflection coefficient assumed to be -1
