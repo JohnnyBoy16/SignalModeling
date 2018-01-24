@@ -10,12 +10,12 @@ import sm_functions as sm
 def half_space_main(e0, data, location_list, freq, nr_list, ni_list, d, theta0, step,
                     stop_index, lb, ub, brute_force_on, lsq_on, c=0.2998):
 
-    if location_list is None:
+    if location_list is None:  # location list is None, search every location
         lsq_n = np.zeros((data.y_step, data.x_step, stop_index//step), dtype=complex)
         lsq_cost = np.zeros((data.y_step, data.x_step))
         brute_force_n = np.zeros((data.y_step_small, data.x_step_small, stop_index//step),
                                  dtype=complex)
-    else:  # location list is None, search every location
+    else:  # search only point specified in location list
         lsq_n = np.zeros((len(location_list), stop_index//step), dtype=complex)
         lsq_cost = np.zeros(len(location_list))
         brute_force_n = np.zeros((len(location_list), stop_index//step), dtype=complex)
@@ -23,7 +23,7 @@ def half_space_main(e0, data, location_list, freq, nr_list, ni_list, d, theta0, 
     # find optimal complex index of refraction only at selected points in location list
     if lsq_on and location_list is not None:
         for i, loc in enumerate(location_list):
-            n0 = np.array([2.0, 0.2])
+            n0 = np.array([2.0, 0.2])  # initial guess
             e2 = copy.deepcopy(data.freq_waveform[loc[0], loc[1], :])
 
             sol = leastsq(half_space_mag_phase_equation, n0, args=(e0, e2, freq, d, theta0))
@@ -135,13 +135,13 @@ def half_space_model(e0, freq, n, d, theta0, theta1, c=0.2998):
     r01 = sm.reflection_coefficient(1.0, n, theta0, theta1)
     r10 = -1  # account for perfect reflection off of substrate
 
-    # t_delay also include imaginary n value, so signal should decrease
+    # t_delay also includes imaginary n value, so signal should decrease
     t_delay = 2 * n*d / (c*np.cos(theta1))  # factor of two accounts for back and forth travel
 
     shift = np.exp(-1j * 2*np.pi * freq * t_delay)
 
-    # model = e0 * t01 * r10 * t10 * shift
-    model = e0 * r01
+    model = e0 * t01 * r10 * t10 * shift
+    # model = e0 * r01
 
     return model
 
