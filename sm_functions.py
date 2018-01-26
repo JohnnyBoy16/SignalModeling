@@ -1,9 +1,11 @@
 """
 Module that contains functions used in signal modelling codes
 """
-import numpy as np
-import csv
 import pdb
+import os
+
+import numpy as np
+import pandas as pd
 
 
 def refractive_index(echo_delta_t, thickness, c=0.2998):
@@ -69,20 +71,28 @@ def phase_screen_t(h, k1, k2, theta1=0, theta2=0):
     return term
 
 
-def read_reference_data(ref_file):
+def read_reference_data(filename, basedir=None, shift=True):
     """
     Reads in data from the reference txt file using the pandas library
-    :param ref_file: The path to the reference txt file
+    :param filename: The path to the reference txt file
+    :param basedir: The path to the directory of the file
+    :param shift: Whether or not to shift reference time values so the array
+        starts at zero. Default=True
     :return: optical_delay: An array of optical delay values (time array)
              ref_amp: The amplitude of the reference signal at a given time
     """
-    import pandas as pd
+
+    if basedir is not None:
+        filename = os.path.join(basedir, filename)
 
     # Read in the reference waveform and separate out the optical delay (time)
     # and the reference amplitude
-    reference_data = pd.read_csv(ref_file, delimiter='\t')
+    reference_data = pd.read_csv(filename, delimiter='\t')
     optical_delay = reference_data['Optical Delay/ps'].values
     ref_amp = reference_data['Raw_Data/a.u.'].values
+
+    if shift:
+        optical_delay -= optical_delay[0]
 
     return optical_delay, ref_amp
 
