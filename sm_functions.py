@@ -102,21 +102,6 @@ def get_theta_out(n0, n1, theta0):
     return np.arcsin(n0/n1 * np.sin(theta0))
 
 
-def read_alpha_data(alpha_file):
-    """
-    Reads in the alpha array that is output by Calibration Main.py
-    :param alpha_file: The path to the file that contains the alpha array
-    :return: alpha over the range of frequencies
-    """
-    with open(alpha_file, 'rb') as f:
-        freader = csv.reader(f, delimiter=',')
-        alpha = np.array(next(freader), dtype=float)
-
-    f.close()
-
-    return alpha
-
-
 def smooth_exponential_transition(e, delta):
     """
     Smooths out a frequency representation of a zero-padded signal by adding and exponential ramp
