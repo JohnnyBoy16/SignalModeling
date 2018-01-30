@@ -84,6 +84,10 @@ def parameter_gradient_descent(n0, e0, e2, theta0, d, freq, start=0, stop=None,
             data_phase = np.unwrap(np.angle(T_data))
             model_phase = np.unwrap(np.angle(T_model))
 
+            # start the DC phase at zero # TODO maybe temporary
+            data_phase -= data_phase[0]
+            model_phase -= model_phase[0]
+
             # use absolute value because phase can be negative
             # this is the error function for phase and magnitude
             rho = (np.abs(data_phase[i]) - np.abs(model_phase)[i])
@@ -105,7 +109,8 @@ def parameter_gradient_descent(n0, e0, e2, theta0, d, freq, start=0, stop=None,
         if n_iter == max_iter:
             print('Max iterations reached at frequency %0.3f!' % freq[i])
         else:
-            print('Number of iterations =', n_iter)
+            # print('Number of iterations =', n_iter)
+            pass
 
         n_array[i] = n_sol  # store solution at that frequency
 
