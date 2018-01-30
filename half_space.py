@@ -146,21 +146,7 @@ def half_space_model(e0, freq, n, d, theta0, theta1, c=0.2998):
     return model
 
 
-def half_space_model_equation(n_in, e0, e2, freq, d, theta0, c=0.2998):
-    """
-    Function wrapper for the half space model that compares the real and imaginary parts of the
-    model transmission coefficient that is derived from the comparison of the reference signal
-    (e0) to the experimental data (e2)
-    """
-
-    n_in[1] *= -1
-
-    delta = half_space_mag_phase_equation(n_in, e0, e2, freq, d, theta0, c)
-
-    return np.sum(delta)
-
-
-def half_space_mag_phase_equation(n_in, e0, e2, freq, d, theta0, c=0.2998):
+def half_space_mag_phase_equation(n_in, e0, e2, freq, d, theta0, k=None, c=0.2998):
     """
     Function wrapper for the half space model that compares the magnitude and phase of the model
     that is derived from the reference signal (e0) to the experimental data (e2)
@@ -175,8 +161,56 @@ def half_space_mag_phase_equation(n_in, e0, e2, freq, d, theta0, c=0.2998):
     # build the model
     model = half_space_model(e0, freq, n_out, d, theta0, theta1, c)
 
-    # model[0] = 0.0  # assume 0 DC frequency, good idea????
+    T_model = model / e0
+    T_data = e2 / e0
 
+    # unwrap the phase so it is a continuous function
+    # this makes for easier solving numerically
+    model_phase = np.unwrap(np.angle(T_model))
+    e2_phase = np.unwrap(np.angle(T_data))
+
+    # set the DC phase to zero
+    model_phase -= model_phase[0]
+    e2_phase -= e2_phase[0]
+
+    # add in the error function that is found in Duvillaret's 1996 paper
+    rho = np.log(np.abs(T_data)) - np.log(np.abs(T_model))
+    phi = e2_phase - model_phase
+
+    # delta = np.array([rho, phi])
+    delta = rho**2 + phi**2
+
+    if k is None:
+        return delta
+    else:
+        return delta[k]
+
+
+def least_sq_wrapper(n_in, e0, e2, freq, d, theta0, c=0.2998):
+    """
+    Equation that is to be used with scipy's least_sq function to estimate a
+    sample's material parameters numerically
+    :param n_in: An array with two values, first value is the real part of the
+        complex n, the second value is the imaginary part. Let the imaginary
+        part be negative for extinction.
+    :param e0: The reference signal in the frequency domain
+    :param e2: The sample signal in the frequency domain
+    :param freq: The frequency array over which to be solved
+    :param d: The thickness of the sample in mm
+    :param theta0: The initial angle of the THz beam in radians
+    :param c: The speed of light in mm/ps (default: 0.2998)
+    :return:
+    """
+
+    n = complex(n_in[0], n_in[1])
+
+    # determine the ray angle of the THz beam in the material
+    theta1 = sm.get_theta_out(1.0, n, theta0)
+
+    # build the model
+    model = half_space_model(e0, freq, n, d, theta0, theta1, c)
+
+    # create transfer function to try and remove system artifacts
     T_model = model / e0
     T_data = e2 / e0
 
@@ -185,12 +219,12 @@ def half_space_mag_phase_equation(n_in, e0, e2, freq, d, theta0, c=0.2998):
     model_unwrapped_phase = np.unwrap(np.angle(T_model))
     e2_unwrapped_phase = np.unwrap(np.angle(T_data))
 
-    # add in the error function that is found in Duvillaret's 1996 paper
-    rho = np.log(np.abs(T_data)) - np.log(np.abs(T_model))
-    phi = e2_unwrapped_phase - model_unwrapped_phase
+    model_mag = np.abs(T_model)
+    e2_mag = np.abs(T_data)
 
-    # delta = np.array([rho, phi])
-    delta = rho**2 + phi**2
+    mag_array = np.log(e2_mag) - np.log(model_mag)
+    phase_array = e2_unwrapped_phase - model_unwrapped_phase
 
-    # return the model unwrapped phase to see if it forms a plane versus (nr, ni)
-    return delta  # , model
+    return_array = np.r_[mag_array, phase_array]
+
+    return return_array
