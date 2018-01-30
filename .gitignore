@@ -1,7 +1,17 @@
 # ignore the Pycharm mumbo jumbo that keeps track of interpreter
 .idea
+
+# ignore the compiled python code
 __pycache__
+
+# ignore swap files
 .swp
 
 # ignore the image folder
 image_bin
+
+# ignore the files that contain saved arrays
+cost_array.npy  # cost for all searched frequencies at each location
+data.pickle  # The THzData class as we want it after calculations
+n_array.pickle  # n solutions from my gradient descent function
+n_array_fmin.pickle  # n solutions from scipy.optimize.fmin
