@@ -12,7 +12,7 @@ image_bin
 old_pickles
 
 # ignore the files that contain saved arrays
-cost_array.npy  # cost for all searched frequencies at each location
-data.pickle  # The THzData class as we want it after calculations
-n_array.pickle  # n solutions from my gradient descent function
-n_array_fmin.pickle  # n solutions from scipy.optimize.fmin
+cost_array.npy
+data.pickle
+n_array.pickle
+n_array_fmin.pickle
