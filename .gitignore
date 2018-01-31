@@ -9,6 +9,7 @@ __pycache__
 
 # ignore the image folder
 image_bin
+old_pickles
 
 # ignore the files that contain saved arrays
 cost_array.npy  # cost for all searched frequencies at each location
