@@ -15,14 +15,14 @@ import util
 from FrameHolder import FrameHolder
 
 # load in THzDataClass that I created
-sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
+sys.path.insert(0, 'D:\\PycharmProjects\\THzProcClass')
 from THzData import THzData
 
 # the reference file that is to be used in the calculation, must be of the same
 # time length and have same wavelength as the tvl data
-ref_file = 'C:\\Work\Refs\\ref 18OCT2017\\30ps waveform.txt'
+ref_file = 'D:\\Work\Refs\\ref 18OCT2017\\30ps waveform.txt'
 
-basedir = 'C:\\Work\\Shim Stock\\New Scans'
+basedir = 'D:\\Work\\Shim Stock\\New Scans'
 tvl_file = 'Yellow Shim Stock.tvl'
 
 # range of real and imaginary values to build the cost function over
@@ -172,8 +172,8 @@ print('Brute Force Search Time = %0.4f seconds' % (t1-t0))
 t0 = time.time()
 
 # initial guess for the gradient descent search
-n0 = complex(1.50, 0)
-n0_array = np.array([1.50, -0.2])
+n0 = complex(1.2, -0.8)
+n0_array = np.array([1.2, -0.8])
 
 if location is None:  # search over entire sample
     shape = (data.waveform.shape[0], data.waveform.shape[1], stop_index)
