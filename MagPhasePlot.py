@@ -46,7 +46,7 @@ class MagPhasePlot:
         self.mag_axis.set_xlabel('Frequency (THz)')
 
         self.phase_axis.set_ylabel('Phase (rad)')
-        self.mag_axis.set_ylabel('Log Magnitude')
+        self.mag_axis.set_ylabel('Magnitude')
 
         self.phase_axis.grid(True)
         self.mag_axis.grid(True)
@@ -81,8 +81,8 @@ class MagPhasePlot:
         model_phase -= model_phase[0]
         data_phase -= data_phase[0]
 
-        model_mag = np.log(np.abs(T_model))
-        data_mag = np.log(np.abs(T_data))
+        model_mag = np.abs(T_model)
+        data_mag = np.abs(T_data)
 
         start = self.holder.start_index
 
