@@ -12,9 +12,9 @@ import numpy as np
 from FrameHolder import FrameHolder
 from sm_functions import read_reference_data
 
-ref_file = 'D:\\Work\Refs\\ref 18OCT2017\\30ps waveform.txt'
+ref_file = 'C:\\Work\Refs\\ref 18OCT2017\\30ps waveform.txt'
 
-basedir = 'D:\\Work\\Shim Stock\\New Scans'
+basedir = 'C:\\Work\\Shim Stock\\New Scans'
 tvl_file = 'Yellow Shim Stock.tvl'
 
 ref_time, ref_amp = read_reference_data(ref_file)

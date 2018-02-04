@@ -69,7 +69,8 @@ class MagPhasePlot:
 
         theta1 = sm.get_theta_out(1.0, n, theta0)
 
-        model = hs.half_space_model(self.e0, self.data.freq, n, self.holder.d, theta0, theta1)
+        model = hs.half_space_model(self.e0, self.data.freq, n, self.holder.d,
+                                    theta0, theta1)
 
         # create the transfer functions that are used to solve the data
         T_model = model / self.e0
@@ -85,12 +86,13 @@ class MagPhasePlot:
         data_mag = np.abs(T_data)
 
         start = self.holder.start_index
+        print(self.data.freq[start])
 
-        self.phase_axis.plot(self.data.freq[start:], model_phase[start:], 'b', label='Model')
-        self.phase_axis.plot(self.data.freq[start:], data_phase[start:], 'r', label='Data')
+        self.phase_axis.plot(self.data.freq, model_phase, 'b', label='Model')
+        self.phase_axis.plot(self.data.freq, data_phase, 'r', label='Data')
 
-        self.mag_axis.plot(self.data.freq[start:], model_mag[start:], 'b', label='Model')
-        self.mag_axis.plot(self.data.freq[start:], data_mag[start:], 'r', label='Data')
+        self.mag_axis.plot(self.data.freq, model_mag, 'b', label='Model')
+        self.mag_axis.plot(self.data.freq, data_mag, 'r', label='Data')
 
         self.phase_axis.legend()
         self.mag_axis.legend()

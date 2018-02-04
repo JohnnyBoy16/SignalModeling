@@ -151,8 +151,8 @@ def half_space_mag_phase_equation(n_in, e0, e2, freq, d, theta0, k=None, c=0.299
     Function wrapper for the half space model that compares the magnitude and phase of the model
     that is derived from the reference signal (e0) to the experimental data (e2)
     """
-    # scipy doesn't like to deal with complex values, so let n_in be a 2 element array and then
-    # make it complex
+    # scipy doesn't like to deal with complex values, so let n_in be a 2 element
+    # array and then make it complex
     n_out = n_in[0] + 1j * n_in[1]
 
     # determine the angle in the material for whatever the index of refraction is
