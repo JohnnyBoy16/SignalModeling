@@ -28,15 +28,13 @@ class WaveformFrame(ParentFrame):
         Constructor method
         :param holder: Class that holds Frames together
         """
-        # figure and axes
-        self.figure = None
-        self.time_axis = None
-        self.freq_axis = None
 
-        # figure canvas object that allows us to draw plots
-        self.figure_canvas = None
+        # provide figure with two subplots stacked on top of each other
+        super().__init__('A-Scan Frame', (2, 1))
 
-        super().__init__('A-Scan Frame')
+        self.time_axis = self.axis[0]
+        self.freq_axis = self.axis[1]
+        del self.axis
 
         # The frame holder to hold all the plots together
         self.holder = holder
@@ -47,19 +45,6 @@ class WaveformFrame(ParentFrame):
         self.is_initialized = False
 
         self.connect_events()
-
-        plt.close()
-
-    # Override from ParentFrame, provide two subplots instead of one
-    def initialize_figure(self):
-        """
-        Initializes a figure with two subplots
-        """
-        self.figure = plt.figure()
-        self.time_axis = self.figure.add_subplot(211)
-        self.freq_axis = self.figure.add_subplot(212)
-
-        self.figure_canvas = FigureCanvas(self, -1, self.figure)
 
         plt.close()
 

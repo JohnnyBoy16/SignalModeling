@@ -27,37 +27,21 @@ class IndexFrame(ParentFrame):
         :param holder: The holder that links the frames together. Holder also
             contains n_data information and the THz Waveforms
         """
-        # figure and axes for plots
-        self.figure = None
-        self.real_axis = None
-        self.imag_axis = None
         self.holder = holder
 
-        # figure canvas object for drawing updated plots
-        self.figure_canvas = None
+        # initialize figure with two subplots
+        super().__init__('Index of Refraction Frame', (2, 1))
 
-        super().__init__('Index of Refraction Frame')
+        self.real_axis = self.axis[0]
+        self.imag_axis = self.axis[1]
 
         # remove self.axis attribute since it is not needed
         del self.axis
 
-        self.plot()
-        self.connect_events()
-
-    # Override from ParentFrame, recreate figure so there are two axes
-    def initialize_figure(self):
-        """
-        Initialize a figure with two subplots
-        """
-        self.figure = plt.figure()
-        self.real_axis = self.figure.add_subplot(211)
-        self.imag_axis = self.figure.add_subplot(212)
-
         self.figure.suptitle(r'Complex $\tilde{n}$ Solution')
 
-        self.figure_canvas = FigureCanvas(self, -1, self.figure)
-
-        plt.close(self.figure)
+        self.plot()
+        self.connect_events()
 
     def plot(self):
         """

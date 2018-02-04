@@ -31,20 +31,16 @@ class NScanFrame(ParentFrame):
         :param data: An instance of THzProcClass
         """
 
-        # figure and axes for the plots
-        self.figure = None
-        self.real_axis = None
-        self.imag_axis = None
-
-        # figure canvas that is used for drawing the plots
-        self.figure_canvas = None
-
-        super().__init__('N-Scan Frame')
+        super().__init__('N-Scan Frame', (2, 1))
 
         # a holder class that links the plots
         self.holder = holder
 
         self.data = data
+
+        self.real_axis = self.axis[0]
+        self.imag_axis = self.axis[1]
+        del self.axis
 
         # keeps track of whether a point in the index of refraction C-Scan has
         # been clicked on and the index of refraction solution has been plotted
@@ -64,17 +60,6 @@ class NScanFrame(ParentFrame):
         self.connect_events()
 
         plt.close()
-
-    # Override from ParentFrame, want to have two subplots instead of one
-    def initialize_figure(self):
-        """
-        Initializes a figure with two subplots
-        """
-        self.figure = plt.figure()
-        self.real_axis = self.figure.add_subplot(211)
-        self.imag_axis = self.figure.add_subplot(212)
-
-        self.figure_canvas = FigureCanvas(self, -1, self.figure)
 
     def plot(self, i=None, j=None, f=None):
         """
