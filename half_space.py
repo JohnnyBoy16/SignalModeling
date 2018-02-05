@@ -133,7 +133,7 @@ def half_space_model(e0, freq, n, d, theta0, theta1, c=0.2998):
     t10 = sm.transmission_coefficient(n, 1.0, theta1, theta0)
 
     r01 = sm.reflection_coefficient(1.0, n, theta0, theta1)
-    r10 = -1  # account for perfect reflection off of substrate
+    r10 = sm.reflection_coefficient(n, 1.0, theta1, theta0)
 
     # t_delay also includes imaginary n value, so signal should decrease
     t_delay = 2 * n*d / (c*np.cos(theta1))  # factor of two accounts for back and forth travel
