@@ -91,8 +91,8 @@ class MagPhasePlot:
         self.phase_axis.plot(self.data.freq, model_phase, 'b', label='Model')
         self.phase_axis.plot(self.data.freq, data_phase, 'r', label='Data')
 
-        self.mag_axis.plot(self.data.freq, model_mag, 'b', label='Model')
-        self.mag_axis.plot(self.data.freq, data_mag, 'r', label='Data')
+        self.mag_axis.plot(self.data.freq[start:], model_mag[start:], 'b', label='Model')
+        self.mag_axis.plot(self.data.freq[start:], data_mag[start:], 'r', label='Data')
 
         self.phase_axis.legend()
         self.mag_axis.legend()

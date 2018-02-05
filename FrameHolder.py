@@ -1,5 +1,7 @@
 import pdb
 
+import numpy as np
+
 from IndexFrame import IndexFrame
 from WaveformFrame import WaveformFrame
 from NScanFrame import NScanFrame
@@ -30,9 +32,9 @@ class FrameHolder:
 
         self.start_index = start
 
-        stop_index = 76
+        stop_index = np.argmin(np.abs(data.freq - 2.0))
 
-        # remove all frequency information after 2.5 THz
+        # remove all frequency information after 2.0 THz
         data.freq = data.freq[:stop_index]
         data.freq_waveform = data.freq_waveform[:, :, :stop_index]
 

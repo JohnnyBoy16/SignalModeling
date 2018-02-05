@@ -15,14 +15,14 @@ import util
 from FrameHolder import FrameHolder
 
 # load in THzDataClass that I created
-sys.path.insert(0, 'D:\\PycharmProjects\\THzProcClass')
+sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
 from THzData import THzData
 
 # the reference file that is to be used in the calculation, must be of the same
 # time length and have same wavelength as the tvl data
-ref_file = 'D:\\Work\Refs\\ref 18OCT2017\\30ps waveform.txt'
+ref_file = 'C:\\Work\Refs\\ref 18OCT2017\\30ps waveform.txt'
 
-basedir = 'D:\\Work\\Shim Stock\\New Scans'
+basedir = 'C:\\Work\\Shim Stock\\New Scans'
 tvl_file = 'Yellow Shim Stock.tvl'
 
 # range of real and imaginary values to build the cost function over
@@ -55,7 +55,7 @@ thz_gate = [[100, 1500], [370, 1170]]
 
 # maximum frequency we want to use in solution
 # above this signal to noise level gets too low
-max_f = 2.5
+max_f = 2.0
 
 start_index = 7
 
@@ -137,6 +137,18 @@ for i in range(data.y_step):
 # calculate frequency domain representation
 data.freq_waveform = np.fft.rfft(data.gated_waveform, axis=2) * data.dt
 
+# the arrival time of the reference and data signal may not be exactly the same
+# use the time shifting property of the FFT to account for this
+
+# the time of flight at the focus point on reference
+focus_time = ref_time[ref_amp.argmax()]
+
+for i in range(data.y_step):
+    for j in range(data.x_step):
+        hit_time = data.time[data.waveform[i, j, :].argmax()]
+        t_diff = focus_time - hit_time
+        data.freq_waveform[i, j, :] * np.exp(-2j * np.pi * data.freq * t_diff)
+
 # experimental data from a point on the scan
 if location is None:
     e2 = data.freq_waveform[16, 5, :]
@@ -149,22 +161,23 @@ cost = np.zeros(size)
 
 t0 = time.time()
 
-# calculate the cost function for each (i, j) pair over the nr, ni guess range
-for y in range(data.y_step):
-    print('y %d of %d' % (y+1, data.y_step))
-    for x in range(data.x_step):
-        # print('x %d of %d' % (x+1, data.x_step))
-        for i, nr in enumerate(nr_bounds):
-            for j, ni in enumerate(ni_bounds):
-                n = np.array([nr, ni])
+if location is None:
+    # calculate the cost function for each (i, j) pair over the nr, ni guess range
+    for y in range(data.y_step):
+        print('y %d of %d' % (y+1, data.y_step))
+        for x in range(data.x_step):
+            # print('x %d of %d' % (x+1, data.x_step))
+            for i, nr in enumerate(nr_bounds):
+                for j, ni in enumerate(ni_bounds):
+                    n = np.array([nr, ni])
 
-                # currently only solving for a single frequency index
-                raw_cost = \
-                    hs.half_space_mag_phase_equation(n, e0[:stop_index], e2[:stop_index],
-                                                     ref_freq[:stop_index], d, theta0)
+                    # currently only solving for a single frequency index
+                    raw_cost = \
+                        hs.half_space_mag_phase_equation(n, e0[:stop_index], e2[:stop_index],
+                                                         ref_freq[:stop_index], d, theta0)
 
-                # store cost
-                cost[y, x, i, j, :] = raw_cost
+                    # store cost
+                    cost[y, x, i, j, :] = raw_cost
 
 t1 = time.time()
 print('Brute Force Search Time = %0.4f seconds' % (t1-t0))
@@ -247,7 +260,8 @@ if location is None:
 else:
     plt.figure('Index of Refraction')
     for i in range(len(location)):
-        plt.plot(data.freq[start_index:stop_index], n_array[i, 4:stop_index].real, colors[i])
+        line = n_array[i, start_index:stop_index].real
+        plt.plot(data.freq[start_index:stop_index], line, colors[i])
     plt.title('Index of Refraction')
     plt.xlabel('Frequency (THz)')
     plt.ylabel(r'Index of Refraction ($n$)')
@@ -255,10 +269,19 @@ else:
 
     plt.figure('Imaginary Index')
     for i in range(len(location)):
-        plt.plot(data.freq[start_index:stop_index], n_array[i, 4:stop_index].imag, colors[i])
+        line = n_array[i, start_index:stop_index].imag
+        plt.plot(data.freq[start_index:stop_index], line, colors[i])
     plt.title(r'$\kappa$')
     plt.xlabel('Frequency (THz)')
     plt.ylabel(r'$\kappa$')
+    plt.grid()
+
+    plt.figure('Data Waveforms')
+    for i, loc in enumerate(location):
+        plt.plot(data.time, data.waveform[loc[0], loc[1], :], colors[i])
+    plt.title('Waveforms')
+    plt.xlabel('Time (ps)')
+    plt.ylabel('Amplitude')
     plt.grid()
 
     # remake C-Scan with FSE to show on C-Scan plot with waveform locations
