@@ -21,28 +21,43 @@ def refractive_index(echo_delta_t, thickness, c=0.2998):
 
 def reflection_coefficient(n1, n2, theta1=0.0, theta2=0.0):
     """
-    Determine the reflection coefficient of a media transition with parallel polarized light
+    Determine the reflection coefficient of a media transition with parallel
+    polarized light. If n2 is given as np.inf, returns -1 for the reflection
+    coefficient.
     :param n1: the refractive index of the media in which coming from
     :param n2: the refractive index of the media in which going to
     :param theta1: the angle of the incident ray, in radians
     :param theta2: the angle of the transmitted ray, in radians
     :return: The reflection coefficient
     """
+
+    if n2 == np.inf or n2 == -np.inf:
+        return -1
+
     num = n1*np.cos(theta2) - n2*np.cos(theta1)
     denom = n1*np.cos(theta2) + n2*np.cos(theta1)
+
     return num / denom
 
 
 def transmission_coefficient(n1, n2, theta1=0, theta2=0):
     """
-    Determine the transmission coefficient of a media transmission, independent of polarization
+    Determine the transmission coefficient of a media transmission, independent
+    of polarization
     :param n1: the refractive index of the media in which coming from
     :param n2: the refractive index of the media in which going to
     :param theta1: the angle of the incident ray, in radians
     :param theta2: the angle of the transmitted ray, in radians
     :return: The transmission coefficient
     """
-    return 2*n1*np.cos(theta1) / (n1*np.cos(theta2) + n2*np.cos(theta1))
+
+    if n2 == np.inf or n2 == -np.inf:
+        return 0
+
+    num = 2 * n1 * np.cos(theta1)
+    denom = n1*np.cos(theta2) + n2*np.cos(theta1)
+
+    return num / denom
 
 
 def phase_screen_r(h, k, theta=0):
