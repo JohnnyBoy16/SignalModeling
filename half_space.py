@@ -178,7 +178,7 @@ def half_space_mag_phase_equation(n_in, e0, e2, freq, d, theta0, k=None, c=0.299
     phi = e2_phase - model_phase
 
     # delta = np.array([rho, phi])
-    delta = rho**2 + phi**2
+    delta = rho + phi
 
     if k is None:
         return delta
