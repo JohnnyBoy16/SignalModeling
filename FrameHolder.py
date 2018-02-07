@@ -5,8 +5,7 @@ import numpy as np
 from IndexFrame import IndexFrame
 from WaveformFrame import WaveformFrame
 from NScanFrame import NScanFrame
-from CostFrame import CostPlot
-from MagPhasePlot import MagPhasePlot
+from LocalPlots import CostPlot, MagPhasePlot, TransferFunctionPlot
 
 
 class FrameHolder:
@@ -46,28 +45,4 @@ class FrameHolder:
         self.n_scan_frame = NScanFrame(self, data)
         self.cost_frame = CostPlot(self, data, extent)
         self.mag_phase_frame = MagPhasePlot(self, data, e0[:stop_index])
-
-
-class FrameHolder2:
-    """
-    Class to hold plots together and allow plots to interact with each other
-    """
-
-    def __init__(self, n_data, waveform, freq_waveform, time, freq, peak_bin):
-
-        self.n = n_data
-        self.waveform = waveform
-        self.freq_waveform = freq_waveform
-        self.time = time
-        self.freq = freq
-        self.peak_bin = peak_bin
-
-        start = 0
-        while n_data[0, 0, start] == 0:
-            start += 1
-
-        self.start_index = start
-
-        self.n_plot = IndexPlot(self)
-        # self.a_scan = WaveformFrame2(self)
-        # self.n_scan = NScanPlot2(self)
+        self.t_frame = TransferFunctionPlot(self, data, e0[:stop_index])
