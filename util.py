@@ -1,6 +1,7 @@
 import pdb
 
 import numpy as np
+from scipy import optimize
 
 import sm_functions as sm
 import half_space as hs
@@ -55,8 +56,11 @@ def parameter_gradient_descent(n0, e0, e2, theta0, d, freq, start=0, stop=None,
         frequency. n_array is the same length as freq.
     """
 
+    # References
     # [1] "Material parameter estimation with terahertz time domain
     #     spectroscopy", Dorney et al, 2001.
+    # [2] "Method for extraction of parameters in THz Time-Domain spectroscopy"
+    #     Duvillaret et al, 1996
 
     if stop is None:
         stop = len(freq)
@@ -84,7 +88,7 @@ def parameter_gradient_descent(n0, e0, e2, theta0, d, freq, start=0, stop=None,
             data_phase = np.unwrap(np.angle(T_data))
             model_phase = np.unwrap(np.angle(T_model))
 
-            # start the DC phase at zero # TODO maybe temporary
+            # start the DC phase at zero this is discussed in [1] & [2]
             data_phase -= data_phase[0]
             model_phase -= model_phase[0]
 
@@ -108,10 +112,29 @@ def parameter_gradient_descent(n0, e0, e2, theta0, d, freq, start=0, stop=None,
 
         if n_iter == max_iter:
             print('Max iterations reached at frequency %0.3f!' % freq[i])
-        else:
-            # print('Number of iterations =', n_iter)
-            pass
 
         n_array[i] = n_sol  # store solution at that frequency
+
+    return n_array
+
+
+def scipy_optimize_parameters(data, n0, e0, d, stop_index):
+
+    theta0 = data.theta0
+
+    n_array = np.zeros((data.y_step, data.x_step, stop_index), dtype=complex)
+
+    for i in range(data.y_step):
+        print('Row %d of %d' % (i+1, data.y_step))
+        for j in range(data.x_step):
+            e2 = data.freq_waveform[i, j, :]
+            for k in range(stop_index):
+                solution = \
+                    optimize.fmin(hs.half_space_mag_phase_equation, n0,
+                                  args=(e0[:stop_index], e2[:stop_index],
+                                        data.freq[:stop_index], d, theta0, k),
+                                  disp=False)
+
+                n_array[i, j, k] = complex(solution[0], solution[1])
 
     return n_array
