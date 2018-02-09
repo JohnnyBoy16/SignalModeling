@@ -5,7 +5,7 @@ import numpy as np
 from IndexFrame import IndexFrame
 from WaveformFrame import WaveformFrame
 from NScanFrame import NScanFrame
-from LocalPlots import CostPlot, MagPhasePlot, TransferFunctionPlot
+from LocalPlots import CostPlot, MagPhasePlot
 
 
 class FrameHolder:
@@ -45,4 +45,3 @@ class FrameHolder:
         self.n_scan_frame = NScanFrame(self, data)
         self.cost_frame = CostPlot(self, data, extent)
         self.mag_phase_frame = MagPhasePlot(self, data, e0[:stop_index])
-        self.t_frame = TransferFunctionPlot(self, data, e0[:stop_index])

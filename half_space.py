@@ -7,95 +7,6 @@ from scipy.optimize import leastsq, minimize
 import sm_functions as sm
 
 
-def half_space_main(e0, data, location_list, freq, nr_list, ni_list, d, theta0, step,
-                    stop_index, lb, ub, brute_force_on, lsq_on, c=0.2998):
-
-    if location_list is None:  # location list is None, search every location
-        lsq_n = np.zeros((data.y_step, data.x_step, stop_index//step), dtype=complex)
-        lsq_cost = np.zeros((data.y_step, data.x_step))
-        brute_force_n = np.zeros((data.y_step_small, data.x_step_small, stop_index//step),
-                                 dtype=complex)
-    else:  # search only point specified in location list
-        lsq_n = np.zeros((len(location_list), stop_index//step), dtype=complex)
-        lsq_cost = np.zeros(len(location_list))
-        brute_force_n = np.zeros((len(location_list), stop_index//step), dtype=complex)
-
-    # find optimal complex index of refraction only at selected points in location list
-    if lsq_on and location_list is not None:
-        for i, loc in enumerate(location_list):
-            n0 = np.array([2.0, 0.2])  # initial guess
-            e2 = copy.deepcopy(data.freq_waveform[loc[0], loc[1], :])
-
-            sol = leastsq(half_space_mag_phase_equation, n0, args=(e0, e2, freq, d, theta0))
-
-            lsq_n[i] = sol[0][0] + 1j*sol[0][1]
-            # lsq_cost[i] = sol.cost
-
-    # perform a point-by-point least squares minimization to find the optimal real and
-    # imaginary parts of the index of refraction
-    elif lsq_on and location_list is None:
-        for i in range(data.y_step):
-            for j in range(data.x_step):
-                n0 = np.array([2.0, -0.2])
-                e2 = copy.deepcopy(data.freq_waveform[i, j, :])
-                sol = leastsq(half_space_mag_phase_equation, n0,
-                              args=(e0, e2, freq, d, theta0))
-
-                # according to scipy docs, sol[1] is an integer flag and if it is larger than
-                #  4, a solution was not found
-                if sol[1] > 4:
-                    raise ValueError('Solution Not Found')
-
-                lsq_n[i, j] = sol[0][0] + 1j*sol[0][1]
-
-    if brute_force_on and location_list is not None:
-        # if location list is not None just do a search over the given points of interest
-        cost = np.zeros((len(location_list), len(nr_list), len(ni_list), stop_index//step))
-        for l, loc in enumerate(location_list):
-            print('Location %d of %d' % (l+1, len(location_list)))
-            e2 = copy.deepcopy(data.freq_waveform[loc[0], loc[1], :])
-            cost[l] = brute_force_search(e0, e2, freq, nr_list, ni_list, d, theta0, step,
-                                         stop_index, lb, ub, c)
-
-        # if location list is None perform a search over all points
-    elif brute_force_on and location_list is None:
-        cost = np.zeros((data.y_step_small, data.x_step_small, len(nr_list), len(ni_list),
-                         stop_index//step))
-
-        for y in range(data.y_step_small):
-            print('Row %d of %d' % (y+1, data.y_step_small))
-            for x in range(data.x_step_small):
-                # print('Point %d of %d' % (x+1, data.x_step_small))
-
-                e2 = copy.deepcopy(data.freq_waveform[y, x, :])
-                cost[y, x, :, :, :] = brute_force_search(
-                    e0, e2, freq, nr_list, ni_list, d, theta0, step, stop_index, lb, ub, c)
-
-    # if we performed a brute force search, we know have the cost function for all search
-    # locations, but we need to know the minimum value location
-    if brute_force_on and location_list is not None:
-        # determine the minimum cost value in each blanket search
-        # the range over which the blanket search occurs
-        for l in range(len(location_list)):
-            for k in range(stop_index // step):
-                min_coords = np.argmin(cost[l, :, :, k])
-                # calculate min location and use unravel_index to give correct coordinates
-                min_coords = np.unravel_index(min_coords, cost[l, :, :, k].shape)
-                brute_force_n[l, k] = complex(nr_list[min_coords[0]], ni_list[min_coords[1]])
-
-    elif brute_force_on and location_list is None:
-        # determine the minimum cost of each brute force search
-        for y in range(data.y_step_small):
-            for x in range(data.x_step_small):
-                for k in range(stop_index // step):
-                    min_coords = np.argmin(cost[y, x, :, :, k])
-                    # calculate min location and use unravel_index to give correct coordinates
-                    min_coords = np.unravel_index(min_coords, cost[y, x, :, :, k].shape)
-                    brute_force_n[y, x, k] = complex(nr_list[min_coords[0]], ni_list[min_coords[1]])
-
-    return brute_force_n, lsq_n, cost, lsq_cost
-
-
 def brute_force_search(e0, e2, freq, nr_list, ni_list, d, theta0, step, stop_index, lb, ub,
                        c=0.2998):
     """
@@ -140,8 +51,11 @@ def half_space_model(e0, freq, n, d, theta0, theta1, c=0.2998):
 
     shift = np.exp(-1j * 2*np.pi * freq * t_delay)
 
-    model = e0 * t01 * r10 * t10 * shift
-    # model = e0 * r01
+    # is distance is given as 0, we just want to look at FSE reflection
+    if d == 0:
+        model = e0 * r01
+    else:
+        model = e0 * t01 * r10 * t10 * shift
 
     return model
 
@@ -177,8 +91,7 @@ def half_space_mag_phase_equation(n_in, e0, e2, freq, d, theta0, k=None, c=0.299
     rho = np.log(np.abs(T_data)) - np.log(np.abs(T_model))
     phi = e2_phase - model_phase
 
-    # delta = np.array([rho, phi])
-    delta = rho + phi
+    delta = rho**2 + phi**2
 
     if k is None:
         return delta

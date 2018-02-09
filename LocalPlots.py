@@ -164,7 +164,6 @@ class CostPlot:
         n = complex(nr, ni)
 
         self.holder.mag_phase_frame.plot(self.i, self.j, n)
-        self.holder.t_frame.plot(self.i, self.j)
 
 
 class MagPhasePlot:
@@ -208,7 +207,7 @@ class MagPhasePlot:
         self.mag_axis.set_xlabel('Frequency (THz)')
 
         self.phase_axis.set_ylabel('Phase (rad)')
-        self.mag_axis.set_ylabel('Magnitude')
+        self.mag_axis.set_ylabel('Log Magnitude')
 
         self.phase_axis.grid(True)
         self.mag_axis.grid(True)
@@ -217,6 +216,8 @@ class MagPhasePlot:
         """
         Plots the magnitude and phase of the transfer functions
         """
+        # if some lines have already been plotted remove them before plotting
+        # new ones
         if self.is_initialized:
             for num in range(2):
                 self.phase_axis.lines[0].remove()
@@ -226,12 +227,14 @@ class MagPhasePlot:
 
         if n is None:
             n = self.n
+        else:
+            self.n = n
 
         theta0 = self.data.theta0
 
         theta1 = sm.get_theta_out(1.0, n, theta0)
 
-        model = hs.half_space_model(self.e0, self.data.freq, n, self.holder.d,
+        model = hs.half_space_model(self.e0*1.1, self.data.freq, n, self.holder.d,
                                     theta0, theta1)
 
         # create the transfer functions that are used to solve the data
@@ -259,7 +262,8 @@ class MagPhasePlot:
         self.phase_axis.legend()
         self.mag_axis.legend()
 
-        self.figure.suptitle('(%d, %d)' % (i, j))
+        self.figure.suptitle('(%d, %d)\tn0: (%0.2f %0.2fj)' % (i, j, self.n.real,
+                                                               self.n.imag))
 
         # calculate the new limits from the data on the plot
         self.phase_axis.relim()
@@ -269,71 +273,4 @@ class MagPhasePlot:
         self.mag_axis.autoscale_view()
 
         # draw new lines
-        self.figure.canvas.draw()
-
-
-class TransferFunctionPlot(ParentPlot):
-    """
-    Plot to display the transfer function at the index that is clicked
-    """
-
-    def __init__(self, holder, data, e0):
-        super().__init__(title='Transfer Functions')
-
-        # set up extra figure stuff
-        self.axis.set_title('Transfer Functions')
-        self.axis.set_xlabel('Frequency (THz)')
-        self.axis.set_ylabel('Magnitude')
-        self.axis.grid(True)
-
-        # the holder for all the frames
-        self.holder = holder
-
-        # the THzData
-        self.data = data
-
-        # the reference waveform in the frequency domain
-        self.e0 = e0
-
-        # set a default n value
-        self.n = complex(1.50, -0.2)
-
-        self.is_initialized = False
-
-    def plot(self, i, j, n=None):
-        """
-        Plots the transfer function at the given (i, j) locations
-        :param i:
-        :param j:
-        :return:
-        """
-        if self.is_initialized:
-            for i in range(2):
-                self.axis.lines[0].remove()
-        else:
-            self.is_initialized = True
-
-        if n is None:
-            n = self.n
-
-        theta0 = self.data.theta0
-
-        theta1 = sm.get_theta_out(1.0, n, theta0)
-
-        model = hs.half_space_model(self.e0, self.data.freq, n, self.holder.d,
-                                    theta0, theta1)
-
-        # create the transfer functions that are used to solve the data
-        T_model = model / self.e0
-        T_data = self.data.freq_waveform[i, j, :] / self.e0
-
-        start = self.holder.start_index
-        self.axis.plot(self.data.freq[start:], np.abs(T_model[start:]), 'b', label='Model')
-        self.axis.plot(self.data.freq[start:], np.abs(T_data[start:]), 'r', label='Data')
-        self.axis.legend()
-
-        # calculate the axis limits and rescale the view
-        self.axis.relim()
-        self.axis.autoscale_view()
-
         self.figure.canvas.draw()
