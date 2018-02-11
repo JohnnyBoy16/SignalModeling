@@ -7,6 +7,21 @@ import sm_functions as sm
 import half_space as hs
 
 
+def gaussian_1d(x, a, mu, sigma):
+    """
+    1D Gaussian function
+    :param x: Location
+    :param a: Amplitude at center
+    :param mu: Center location
+    :param sigma: standard deviation
+    :return: Value of the function at the specified x location(s)
+    """
+
+    f = a * np.exp(-(x-mu)**2 / (2*sigma**2))
+
+    return f
+
+
 def parabolic_equation(data, a, b, c, d, e):
     """
     Equation for a paraboloid to fit to the cost function for determining the

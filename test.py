@@ -12,9 +12,9 @@ import numpy as np
 from FrameHolder import FrameHolder
 from sm_functions import read_reference_data
 
-ref_file = 'C:\\Work\Refs\\ref 18OCT2017\\30ps waveform.txt'
+ref_file = 'D:\\Work\Refs\\ref 18OCT2017\\30ps waveform.txt'
 
-basedir = 'C:\\Work\\Shim Stock\\New Scans'
+basedir = 'D:\\Work\\Shim Stock\\New Scans'
 tvl_file = 'Yellow Shim Stock.tvl'
 
 ref_time, ref_amp = read_reference_data(ref_file)
@@ -22,10 +22,10 @@ ref_time, ref_amp = read_reference_data(ref_file)
 d = np.array([0.508])
 
 # index to remove front "blip"
-gate0 = 450
+gate0 = 875
 # 2nd gate for reference signal, this cuts out on water vapor lines on the
 # backside of the reference
-gate1 = 2050
+gate1 = 1620
 
 ref_freq_amp = copy.deepcopy(ref_amp)
 ref_freq_amp[:gate0] = 0

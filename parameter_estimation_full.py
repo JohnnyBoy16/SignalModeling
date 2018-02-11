@@ -15,15 +15,15 @@ import util
 from FrameHolder import FrameHolder
 
 # load in THzDataClass that I created
-sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
+sys.path.insert(0, 'D:\\PycharmProjects\\THzProcClass')
 from THzData import THzData
 
 # the reference file that is to be used in the calculation, must be of the same
 # time length and have same wavelength as the tvl data
-ref_file = 'C:\\Work\Refs\\ref 18OCT2017\\30ps waveform.txt'
+ref_file = 'D:\\Work\Refs\\ref 06FEB2018\\30ps waveform.txt'
 
-basedir = 'C:\\Work\\Shim Stock\\New Scans'
-tvl_file = 'Yellow Shim Stock.tvl'
+basedir = 'D:\\Work\\Shim Stock\\New Scans'
+tvl_file = 'Yellow Shim Stock 10avg.tvl'
 
 # range of real and imaginary values to build the cost function over
 nr_bounds = np.linspace(2.5, 1, 100)
@@ -45,6 +45,9 @@ c = 0.2998  # speed of light in mm / ps
 
 gate0 = 450  # index to remove front "blip"
 gate1 = 2050  # 2nd gate for reference signal, this cuts out on water vapor lines
+
+gate0 = 450
+gate1 = 2050
 
 # gate to initialize the THzData class, want the echo of interest to be in the
 # follow gate. This allows us to use peak_bin to gate the area of interest in
@@ -149,24 +152,16 @@ for i in range(data.y_step):
         t_diff = focus_time - hit_time
         data.freq_waveform[i, j, :] * np.exp(-2j * np.pi * data.freq * t_diff)
 
-# experimental data from a point on the scan
 if location is None:
-    e2 = data.freq_waveform[16, 5, :]
-else:
-    e2 = data.freq_waveform[location[0, 0], location[0, 1], :]
-
-# the cost map is 5D, [i, j, nr, ni, freq]
-size = (data.y_step, data.x_step, len(nr_bounds), len(ni_bounds), stop_index)
-cost = np.zeros(size)
-
-t0 = time.time()
-
-if location is None:
+    t0 = time.time()
+    # the cost map is 5D, [i, j, nr, ni, freq]
+    size = (data.y_step, data.x_step, len(nr_bounds), len(ni_bounds), stop_index)
+    cost = np.zeros(size)
     # calculate the cost function for each (i, j) pair over the nr, ni guess range
     for y in range(data.y_step):
         print('y %d of %d' % (y+1, data.y_step))
         for x in range(data.x_step):
-            # print('x %d of %d' % (x+1, data.x_step))
+            e2 = data.freq_waveform[y, x, :]
             for i, nr in enumerate(nr_bounds):
                 for j, ni in enumerate(ni_bounds):
                     n = np.array([nr, ni])
@@ -179,8 +174,8 @@ if location is None:
                     # store cost
                     cost[y, x, i, j, :] = raw_cost
 
-t1 = time.time()
-print('Brute Force Search Time = %0.4f seconds' % (t1-t0))
+    t1 = time.time()
+    print('Brute Force Search Time = %0.4f seconds' % (t1-t0))
 
 t0 = time.time()
 
@@ -191,26 +186,13 @@ n0_array = np.array([1.2, -0.8])
 if location is None:  # search over entire sample
     shape = (data.waveform.shape[0], data.waveform.shape[1], stop_index)
     n_array = np.zeros(shape, dtype=complex)
-    n_array_fmin = np.zeros(shape, dtype=complex)
 else:
     n_array = np.zeros((len(location), stop_index), dtype=complex)
 
 if location is None:  # solve for every (i, j)
-    for i in range(data.y_step):
-        print('Row %d of %d' % (i+1, data.y_step))
-        for j in range(data.x_step):
-            e2 = data.freq_waveform[i, j, :]
-            for k in range(stop_index):
-                solution = \
-                    optimize.fmin(hs.half_space_mag_phase_equation, n0_array,
-                                  args=(e0[:stop_index], e2[:stop_index],
-                                        data.freq[:stop_index], d, theta0, k),
-                                  disp=False)
-
-                n_array_fmin[i, j, k] = complex(solution[0], solution[1])
-    t1 = time.time()
-    print('Time of scipy.optimize = %0.4f' % (t1-t0))
     t0 = time.time()
+
+    n_array_fmin = util.scipy_optimize_parameters(data, n0, e0, d, stop_index)
 
     for i in range(data.y_step):
         print('Row %d of %d' % (i+1, data.y_step))
@@ -251,6 +233,7 @@ if location is None:
 
     app = wx.App(False)
 
+    n_array_fmin = n_array
     holder = FrameHolder(data, n_array, n_array_fmin, cost, e0, d)
 
     plt.show()
