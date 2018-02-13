@@ -1,29 +1,25 @@
 import pdb
-import sys
 import time
 import copy
 
 import numpy as np
 import matplotlib.pyplot as plt
-from mayavi import mlab
 import wx
-from scipy import optimize
+
+from THzProc.THzData import THzData
+from base_util.signal_model_functions import brute_force_search
 
 import sm_functions as sm
-import half_space as hs
 import util
-from FrameHolder import FrameHolder
 
-# load in THzDataClass that I created
-sys.path.insert(0, 'C:\\PycharmProjects\\THzProcClass')
-from THzData import THzData
+from FrameHolder import FrameHolder
 
 # the reference file that is to be used in the calculation, must be of the same
 # time length and have same wavelength as the tvl data
-ref_file = 'C:\\Work\\Refs\\ref 18OCT2017\\30ps waveform.txt'
+ref_file = 'C:\\Work\\Refs\\ref 11DEC2017\\60ps waveform.txt'
 
-basedir = 'C:\\Work\\Shim Stock\\New Scans'
-tvl_file = 'Yellow Shim Stock.tvl'
+basedir = 'E:\\RR 2016\\THz Data\\Grinding Trial Sample\\1st Grind'
+tvl_file = 'Sample 4-1 After 1st Polish res=0.25mm.tvl'
 
 # range of real and imaginary values to build the cost function over
 nr_bounds = np.linspace(2.5, 1, 100)
@@ -39,30 +35,29 @@ location = None
 #                      [46, 247],
 #                      [136, 267]])
 
-d = np.array([0.508])  # thickness of the yellow shim stock in mm
+# thickness estimate of the yellow shim stock is 0.508 mm
+d = np.array([0])  # thickness of the sample in mm, use 0 to look at FSE
 
 c = 0.2998  # speed of light in mm / ps
 
 # gate for Yellow Shim Stock is below
 # gate0 = 450
 # gate1 = 2050
-gate0 = 450  # index to remove front "blip"
-gate1 = 2050  # 2nd gate for reference signal, this cuts out on water vapor lines
+gate0 = 325  # index to remove front "blip"
+gate1 = 910  # 2nd gate for reference signal, this cuts out on water vapor lines
 
 # gate to initialize the THzData class, want the echo of interest to be in the
 # follow gate. This allows us to use peak_bin to gate the area of interest in
 # the waveform, a gate of [[100, 1500], [370, 1170]] captures the front surface
 # echo in the lead gate and follow gate gets the back surface for the yellow
 # shim stock
-thz_gate = [[100, 1500], [370, 1170]]
+thz_gate = [[100, 1500], [-360, 275]]
 
 # maximum frequency we want to use in solution
 # above this signal to noise level gets too low
-max_f = 2.0
+max_f = 2.5
 min_f = 0.25
 
-# incoming angle of system is 17.5 degrees
-# convert to radians
 theta0 = 17.5 * np.pi / 180
 
 # list of colors to use for plotting
@@ -149,27 +144,10 @@ for i in range(data.y_step):
         data.freq_waveform[i, j, :] * np.exp(-2j * np.pi * data.freq * t_diff)
 
 if location is None:
-    # the cost map is 5D, [i, j, nr, ni, freq]
-    size = (data.y_step, data.x_step, len(nr_bounds), len(ni_bounds), stop_index)
-    cost = np.zeros(size)
-
     t0 = time.time()
-    # calculate the cost function for each (i, j) pair over the nr, ni guess range
-    for y in range(data.y_step):
-        print('y %d of %d' % (y+1, data.y_step))
-        for x in range(data.x_step):
-            e2 = data.freq_waveform[y, x, :stop_index]
-            for i, nr in enumerate(nr_bounds):
-                for j, ni in enumerate(ni_bounds):
-                    n = np.array([nr, ni])
-
-                    # currently only solving for a single frequency index
-                    raw_cost = \
-                        hs.half_space_mag_phase_equation(n, e0[:stop_index], e2[:stop_index],
-                                                         ref_freq[:stop_index], d, theta0)
-
-                    # store cost
-                    cost[y, x, i, j, :] = raw_cost
+    cost = brute_force_search(data.freq_waveform[:, :, :stop_index], e0[:stop_index],
+                              data.freq[:stop_index], nr_bounds, ni_bounds, d, theta0,
+                              return_sum=True)
 
     t1 = time.time()
     print('Brute Force Search Time = %0.4f seconds' % (t1-t0))
@@ -187,9 +165,11 @@ else:
     n_array = np.zeros((len(location), stop_index), dtype=complex)
 
 if location is None:  # solve for every (i, j)
+    ncols = data.y_step
+    nrows = data.x_step
 
-    for i in range(data.y_step):
-        print('Row %d of %d' % (i+1, data.y_step))
+    for i in range(ncols):
+        print('Row %d of %d' % (i+1, nrows))
         for j in range(data.x_step):
             # print('Step %d of %d' % (j+1, data.x_step))
             e2 = data.freq_waveform[i, j, :]
