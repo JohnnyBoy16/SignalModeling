@@ -46,6 +46,9 @@ c = 0.2998  # speed of light in mm / ps
 gate0 = 325  # index to remove front "blip"
 gate1 = 910  # 2nd gate for reference signal, this cuts out on water vapor lines
 
+gate0 = 450
+gate1 = 2050
+
 # gate to initialize the THzData class, want the echo of interest to be in the
 # follow gate. This allows us to use peak_bin to gate the area of interest in
 # the waveform, a gate of [[100, 1500], [370, 1170]] captures the front surface
@@ -145,6 +148,7 @@ for i in range(data.y_step):
 
 if location is None:
     t0 = time.time()
+
     cost = brute_force_search(data.freq_waveform[:, :, :stop_index], e0[:stop_index],
                               data.freq[:stop_index], nr_bounds, ni_bounds, d, theta0,
                               return_sum=True)
@@ -165,11 +169,16 @@ else:
     n_array = np.zeros((len(location), stop_index), dtype=complex)
 
 if location is None:  # solve for every (i, j)
-    ncols = data.y_step
-    nrows = data.x_step
+    t0 = time.time()
 
-    for i in range(ncols):
-        print('Row %d of %d' % (i+1, nrows))
+    n_array_fmin = util.scipy_optimize_parameters(data, n0, e0, d, stop_index)
+
+    t1 = time.time()
+    print('Time for scipy optimize', t1-t0)
+    t0 = time.time()
+
+    for i in range(data.y_step):
+        print('Row %d of %d' % (i+1, data.y_step))
         for j in range(data.x_step):
             # print('Step %d of %d' % (j+1, data.x_step))
             e2 = data.freq_waveform[i, j, :]
