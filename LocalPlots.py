@@ -131,7 +131,14 @@ class CostPlot:
 
         print(self.i, self.j)
 
-        cost_image = self.holder.cost[self.i, self.j, :, :, self.f_idx]
+        # cost can be either a 4D or 5D array depending on whether it was
+        # calculated for every frequency or solved for a single value. If cost
+        # was calculated for every frequency than it will be 4D in the shape
+        if len(self.holder.cost.shape) == 4:
+            cost_image = self.holder.cost[self.i, self.j, :, :]
+        else:  # assume that cost shape is 5D
+            cost_image = self.holder.cost[self.i, self.j, :, :, self.f_idx]
+
         min_coords = np.unravel_index(cost_image.argmin(), cost_image.shape)
 
         self.image = self.axis.imshow(cost_image, extent=self.extent, aspect='auto')
@@ -155,6 +162,7 @@ class CostPlot:
         Shows the magnitude and phase of the model and data at the selected nr,
         ni value
         """
+        # if user does not click in the image, do nothing and return
         if not event.inaxes:
             return
 
