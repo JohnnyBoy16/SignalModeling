@@ -16,14 +16,14 @@ from FrameHolder import FrameHolder
 
 # the reference file that is to be used in the calculation, must be of the same
 # time length and have same wavelength as the tvl data
-ref_file = 'C:\\Work\\Refs\\ref 11DEC2017\\60ps waveform.txt'
+ref_file = 'D:\\Work\\Refs\\ref 11DEC2017\\60ps waveform.txt'
 
-basedir = 'E:\\RR 2016\\THz Data\\Grinding Trial Sample\\1st Grind'
+basedir = 'F:\\RR 2016\\THz Data\\Grinding Trial Sample\\1st Grind'
 tvl_file = 'Sample 4-1 After 1st Polish res=0.25mm.tvl'
 
 # range of real and imaginary values to build the cost function over
-nr_bounds = np.linspace(2.5, 1, 100)
-ni_bounds = np.linspace(-0.001, -1.0, 100)
+nr_bounds = np.linspace(2.5, 1, 50)
+ni_bounds = np.linspace(-0.001, -1.0, 50)
 
 # index from which to extract values from tvl file
 location = None
@@ -45,9 +45,6 @@ c = 0.2998  # speed of light in mm / ps
 # gate1 = 2050
 gate0 = 325  # index to remove front "blip"
 gate1 = 910  # 2nd gate for reference signal, this cuts out on water vapor lines
-
-gate0 = 450
-gate1 = 2050
 
 # gate to initialize the THzData class, want the echo of interest to be in the
 # follow gate. This allows us to use peak_bin to gate the area of interest in
@@ -73,6 +70,8 @@ colors = ['r', 'b', 'g', 'k', 'm', 'c', 'y']
 # load the reference signal and tvl scan data
 ref_time, ref_amp = sm.read_reference_data(ref_file)
 data = THzData(tvl_file, basedir, gate=thz_gate, follow_gate_on=True)
+
+index_tuple = data.resize(-12, 12, -12, 12, return_indices=True)
 
 # plot reference waveform and gate0 before modification so we can see what
 # it looks like
@@ -146,6 +145,13 @@ for i in range(data.y_step):
         t_diff = focus_time - hit_time
         data.freq_waveform[i, j, :] * np.exp(-2j * np.pi * data.freq * t_diff)
 
+if data.has_been_resized:
+    i0 = index_tuple[0]
+    i1 = index_tuple[1]
+    j0 = index_tuple[2]
+    j1 = index_tuple[3]
+    data.freq_waveform = data.freq_waveform[i0:i1, j0:j1, :]
+
 if location is None:
     t0 = time.time()
 
@@ -171,7 +177,7 @@ else:
 if location is None:  # solve for every (i, j)
     t0 = time.time()
 
-    n_array_fmin = util.scipy_optimize_parameters(data, n0, e0, d, stop_index)
+    n_array_fmin = util.scipy_optimize_parameters(data, n0_array, e0, d, stop_index)
 
     t1 = time.time()
     print('Time for scipy optimize', t1-t0)
@@ -211,6 +217,8 @@ plt.imshow(data.tof_c_scan, interpolation='none', cmap='gray')
 plt.title('Time of Flight')
 plt.grid()
 plt.colorbar()
+
+pdb.set_trace()
 
 if location is None:
 
