@@ -58,10 +58,6 @@ def half_space_model(e0, freq, n, d, theta0, theta1, c=0.2998):
     else:
         model = e0 * t01 * r10 * t10 * shift
 
-    factor = util.gaussian_1d(d/n.real, 1, 0, 1.22)
-
-    model *= factor
-
     return model
 
 
