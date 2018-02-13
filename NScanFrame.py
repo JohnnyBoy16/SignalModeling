@@ -95,10 +95,14 @@ class NScanFrame(ParentFrame):
         self.real_axis.plot(self.data.freq[start:], real_line, 'r', label='Fmin Solution')
         self.imag_axis.plot(self.data.freq[start:], imag_line, 'r', label='Fmin Solution')
 
-        self.real_axis.axvline(self.data.freq[self.f_idx], linestyle='--',
-                               color='k', picker=2, linewidth=1.0)
-        self.imag_axis.axvline(self.data.freq[self.f_idx], linestyle='--',
-                               color='k', picker=2, linewidth=1.0)
+        # if the shape of the cost array is 5D, then there is a cost plot for
+        # every frequency and we can move along it. Otherwise the cost is 4D and
+        # there is no information for each frequency, so don't plot the lines.
+        if self.holder.cost.shape == 5:
+            self.real_axis.axvline(self.data.freq[self.f_idx], linestyle='--',
+                                   color='k', picker=2, linewidth=1.0)
+            self.imag_axis.axvline(self.data.freq[self.f_idx], linestyle='--',
+                                   color='k', picker=2, linewidth=1.0)
 
         self.real_axis.legend()
         self.imag_axis.legend()
