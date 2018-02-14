@@ -71,6 +71,7 @@ colors = ['r', 'b', 'g', 'k', 'm', 'c', 'y']
 ref_time, ref_amp = sm.read_reference_data(ref_file)
 data = THzData(tvl_file, basedir, gate=thz_gate, follow_gate_on=True)
 
+# if the sample is NOT overscanned need to comment this out
 index_tuple = data.resize(-12, 12, -12, 12, return_indices=True)
 
 # plot reference waveform and gate0 before modification so we can see what
@@ -145,6 +146,7 @@ for i in range(data.y_step):
         t_diff = focus_time - hit_time
         data.freq_waveform[i, j, :] * np.exp(-2j * np.pi * data.freq * t_diff)
 
+# this needs to be here because there is not a peak_bin_small attribute
 if data.has_been_resized:
     i0 = index_tuple[0]
     i1 = index_tuple[1]
@@ -153,14 +155,15 @@ if data.has_been_resized:
     data.freq_waveform = data.freq_waveform[i0:i1, j0:j1, :]
 
 if location is None:
-    t0 = time.time()
-
-    cost = brute_force_search(data.freq_waveform[:, :, :stop_index], e0[:stop_index],
-                              data.freq[:stop_index], nr_bounds, ni_bounds, d, theta0,
-                              return_sum=True)
-
-    t1 = time.time()
-    print('Brute Force Search Time = %0.4f seconds' % (t1-t0))
+    pass
+    # t0 = time.time()
+    #
+    # cost = brute_force_search(data.freq_waveform[:, :, :stop_index], e0[:stop_index],
+    #                           data.freq[:stop_index], nr_bounds, ni_bounds, d, theta0,
+    #                           return_sum=True)
+    #
+    # t1 = time.time()
+    # print('Brute Force Search Time = %0.4f seconds' % (t1-t0))
 
 t0 = time.time()
 
@@ -168,8 +171,8 @@ t0 = time.time()
 n0 = complex(1.2, -0.8)
 n0_array = np.array([1.2, -0.8])
 
-if location is None:  # search over entire sample
-    shape = (data.waveform.shape[0], data.waveform.shape[1], stop_index)
+if location is None:
+    shape = (data.freq_waveform.shape[0], data.freq_waveform.shape[1], stop_index)
     n_array = np.zeros(shape, dtype=complex)
 else:
     n_array = np.zeros((len(location), stop_index), dtype=complex)
@@ -177,16 +180,20 @@ else:
 if location is None:  # solve for every (i, j)
     t0 = time.time()
 
+    print("Starting scipy's optimize")
     n_array_fmin = util.scipy_optimize_parameters(data, n0_array, e0, d, stop_index)
 
     t1 = time.time()
     print('Time for scipy optimize', t1-t0)
     t0 = time.time()
 
-    for i in range(data.y_step):
-        print('Row %d of %d' % (i+1, data.y_step))
-        for j in range(data.x_step):
-            # print('Step %d of %d' % (j+1, data.x_step))
+    nrows = data.freq_waveform.shape[0]
+    ncols = data.freq_waveform.shape[1]
+
+    print('Starting my gradient descent')
+    for i in range(nrows):
+        print('Row %d of %d' % (i+1, nrows))
+        for j in range(ncols):
             e2 = data.freq_waveform[i, j, :]
             n_array[i, j, :] = \
                 util.parameter_gradient_descent(n0, e0, e2, theta0, d, data.freq,

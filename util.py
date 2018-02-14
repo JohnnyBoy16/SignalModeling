@@ -134,14 +134,32 @@ def parameter_gradient_descent(n0, e0, e2, theta0, d, freq, start=0, stop=None,
 
 
 def scipy_optimize_parameters(data, n0, e0, d, stop_index):
+    """
+    Function wrapper for scipy.optimize.fmin to find the optimal index of
+    refraction. This function will try to solve for the index of refraction as
+    a function of frequency from data.freq[0] to data.freq[stop_index]. Ensure
+    that data.freq_waveform includes all of the (x, y) locations of interest
+    (eg that it contains only the part of the sample that you are interested in
+    without having any of the over scanned area.
+    :param data: An instance of the THzData class
+    :param n0: The initial guess for the index of refraction
+    :param e0: The reference waveform in the frequency domain
+    :param d: The thickness of the sample in mm
+    :param stop_index: The highest index in the frequency domain for which to
+        solve for
+    :return: The index of refraction at each frequency across the sample
+    """
 
     theta0 = data.theta0
 
-    n_array = np.zeros((data.y_step, data.x_step, stop_index), dtype=complex)
+    nrows = data.freq_waveform.shape[0]
+    ncols = data.freq_waveform.shape[1]
 
-    for i in range(data.y_step):
-        print('Row %d of %d' % (i+1, data.y_step))
-        for j in range(data.x_step):
+    n_array = np.zeros((nrows, ncols, stop_index), dtype=complex)
+
+    for i in range(nrows):
+        print('Row %d of %d' % (i+1, nrows))
+        for j in range(ncols):
             e2 = data.freq_waveform[i, j, :]
             for k in range(stop_index):
                 solution = \
