@@ -16,10 +16,10 @@ from FrameHolder import FrameHolder
 
 # the reference file that is to be used in the calculation, must be of the same
 # time length and have same wavelength as the tvl data
-ref_file = 'D:\\Work\\Refs\\ref 11DEC2017\\60ps waveform.txt'
+ref_file = 'D:\\Work\\Refs\\ref 18OCT2017\\30ps waveform.txt'
 
-basedir = 'F:\\RR 2016\\THz Data\\Grinding Trial Sample\\1st Grind'
-tvl_file = 'Sample 4-1 After 1st Polish res=0.25mm.tvl'
+basedir = 'D:\\Work\\Shim Stock\\New Scans'
+tvl_file = 'Yellow Shim Stock.tvl'
 
 # range of real and imaginary values to build the cost function over
 nr_bounds = np.linspace(2.5, 1, 50)
@@ -36,26 +36,26 @@ location = None
 #                      [136, 267]])
 
 # thickness estimate of the yellow shim stock is 0.508 mm
-d = np.array([0])  # thickness of the sample in mm, use 0 to look at FSE
+d = np.array([0.508])  # thickness of the sample in mm, use 0 to look at FSE
 
 c = 0.2998  # speed of light in mm / ps
 
 # gate for Yellow Shim Stock is below
 # gate0 = 450
 # gate1 = 2050
-gate0 = 325  # index to remove front "blip"
-gate1 = 910  # 2nd gate for reference signal, this cuts out on water vapor lines
+gate0 = 850  # index to remove front "blip"
+gate1 = 1675  # 2nd gate for reference signal, this cuts out on water vapor lines
 
 # gate to initialize the THzData class, want the echo of interest to be in the
 # follow gate. This allows us to use peak_bin to gate the area of interest in
 # the waveform, a gate of [[100, 1500], [370, 1170]] captures the front surface
 # echo in the lead gate and follow gate gets the back surface for the yellow
 # shim stock
-thz_gate = [[100, 1500], [-360, 275]]
+thz_gate = [[100, 1500], [370, 1170]]
 
 # maximum frequency we want to use in solution
 # above this signal to noise level gets too low
-max_f = 2.5
+max_f = 2.0
 min_f = 0.25
 
 theta0 = 17.5 * np.pi / 180
@@ -72,7 +72,7 @@ ref_time, ref_amp = sm.read_reference_data(ref_file)
 data = THzData(tvl_file, basedir, gate=thz_gate, follow_gate_on=True)
 
 # if the sample is NOT overscanned need to comment this out
-index_tuple = data.resize(-12, 12, -12, 12, return_indices=True)
+# index_tuple = data.resize(-12, 12, -12, 12, return_indices=True)
 
 # plot reference waveform and gate0 before modification so we can see what
 # it looks like
@@ -155,15 +155,14 @@ if data.has_been_resized:
     data.freq_waveform = data.freq_waveform[i0:i1, j0:j1, :]
 
 if location is None:
-    pass
-    # t0 = time.time()
-    #
-    # cost = brute_force_search(data.freq_waveform[:, :, :stop_index], e0[:stop_index],
-    #                           data.freq[:stop_index], nr_bounds, ni_bounds, d, theta0,
-    #                           return_sum=True)
-    #
-    # t1 = time.time()
-    # print('Brute Force Search Time = %0.4f seconds' % (t1-t0))
+    print('Start Brute Force Search to make Cost Model...')
+    t0 = time.time()
+    cost = brute_force_search(data.freq_waveform[:, :, :stop_index], e0[:stop_index],
+                              data.freq[:stop_index], nr_bounds, ni_bounds, d, theta0,
+                              return_sum=False)
+
+    t1 = time.time()
+    print('Brute Force Search Time = %0.4f seconds' % (t1-t0))
 
 t0 = time.time()
 
@@ -231,7 +230,6 @@ if location is None:
 
     app = wx.App(False)
 
-    n_array_fmin = n_array
     holder = FrameHolder(data, n_array, n_array_fmin, cost, e0, d)
 
     plt.show()
