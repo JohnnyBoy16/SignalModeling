@@ -270,7 +270,7 @@ class MagPhasePlot:
         self.phase_axis.legend()
         self.mag_axis.legend()
 
-        self.figure.suptitle('(%d, %d)\tn0: (%0.2f %0.2fj)' % (i, j, self.n.real,
+        self.figure.suptitle('(%d, %d)  n0: (%0.2f %0.2fj)' % (i, j, self.n.real,
                                                                self.n.imag))
 
         # calculate the new limits from the data on the plot

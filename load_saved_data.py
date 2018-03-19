@@ -2,6 +2,7 @@
 Test code index of refraction interactive plot stuff
 """
 
+import pdb
 import pickle
 import copy
 
@@ -12,7 +13,7 @@ import numpy as np
 from FrameHolder import FrameHolder
 from sm_functions import read_reference_data
 
-ref_file = 'C:\\Work\Refs\\ref 18OCT2017\\30ps waveform.txt'
+ref_file = 'C:\\Work\\Refs\\ref 18OCT2017\\30ps waveform.txt'
 
 basedir = 'C:\\Work\\Shim Stock\\New Scans'
 tvl_file = 'Yellow Shim Stock.tvl'

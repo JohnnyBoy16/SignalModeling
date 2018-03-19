@@ -16,9 +16,9 @@ from FrameHolder import FrameHolder
 
 # the reference file that is to be used in the calculation, must be of the same
 # time length and have same wavelength as the tvl data
-ref_file = 'D:\\Work\\Refs\\ref 18OCT2017\\30ps waveform.txt'
+ref_file = 'C:\\Work\\Refs\\ref 18OCT2017\\30ps waveform.txt'
 
-basedir = 'D:\\Work\\Shim Stock\\New Scans'
+basedir = 'C:\\Work\\Shim Stock\\New Scans'
 tvl_file = 'Yellow Shim Stock.tvl'
 
 # range of real and imaginary values to build the cost function over
@@ -43,8 +43,8 @@ c = 0.2998  # speed of light in mm / ps
 # gate for Yellow Shim Stock is below
 # gate0 = 450
 # gate1 = 2050
-gate0 = 850  # index to remove front "blip"
-gate1 = 1675  # 2nd gate for reference signal, this cuts out on water vapor lines
+gate0 = 450  # index to remove front "blip"
+gate1 = 2050  # 2nd gate for reference signal, this cuts out on water vapor lines
 
 # gate to initialize the THzData class, want the echo of interest to be in the
 # follow gate. This allows us to use peak_bin to gate the area of interest in
