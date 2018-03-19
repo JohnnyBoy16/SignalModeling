@@ -98,7 +98,7 @@ class NScanFrame(ParentFrame):
         # if the shape of the cost array is 5D, then there is a cost plot for
         # every frequency and we can move along it. Otherwise the cost is 4D and
         # there is no information for each frequency, so don't plot the lines.
-        if self.holder.cost.shape == 5:
+        if len(self.holder.cost.shape) == 5:
             self.real_axis.axvline(self.data.freq[self.f_idx], linestyle='--',
                                    color='k', picker=2, linewidth=1.0)
             self.imag_axis.axvline(self.data.freq[self.f_idx], linestyle='--',
