@@ -5,12 +5,10 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 import wx
+import skimage.filters
 
-from THzProc.THzData import THzData
-from base_util.signal_model_functions import brute_force_search
-
-import sm_functions as sm
-import util
+from THzProc.THzData import THzData, RefData
+import base_util.signal_model_functions as sm
 
 from FrameHolder import FrameHolder
 
@@ -18,7 +16,7 @@ from FrameHolder import FrameHolder
 # time length and have same wavelength as the tvl data
 ref_file = 'C:\\Work\\Refs\\ref 18OCT2017\\30ps waveform.txt'
 
-basedir = 'C:\\Work\\Shim Stock\\New Scans'
+basedir = 'C:\\Work\\Parameter Estimation\\Shim Stock TVL Files\\New Scans'
 tvl_file = 'Yellow Shim Stock.tvl'
 
 # range of real and imaginary values to build the cost function over
@@ -27,13 +25,11 @@ ni_bounds = np.linspace(-0.001, -1.0, 50)
 
 # index from which to extract values from tvl file
 location = None
-# location = np.array([[160, 156],
-#                      [255, 217],
-#                      [260, 51],
-#                      [145, 48],
-#                      [50, 50],
-#                      [46, 247],
-#                      [136, 267]])
+# location = np.array([[38, 98],
+#                      [90, 32],
+#                      [92, 73],
+#                      [29, 29],
+#                      [61, 65]])
 
 # thickness estimate of the yellow shim stock is 0.508 mm
 d = np.array([0.508])  # thickness of the sample in mm, use 0 to look at FSE
@@ -58,7 +54,12 @@ thz_gate = [[100, 1500], [370, 1170]]
 max_f = 2.0
 min_f = 0.25
 
+# incoming angle of the THz system
 theta0 = 17.5 * np.pi / 180
+
+# the indices of refraction of the media on each side of the sample under 
+# question
+n_media = np.array([1.0, 1.0], dtype=complex)
 
 # list of colors to use for plotting
 colors = ['r', 'b', 'g', 'k', 'm', 'c', 'y']
@@ -68,8 +69,24 @@ colors = ['r', 'b', 'g', 'k', 'm', 'c', 'y']
 # START PREPROCESSING
 
 # load the reference signal and tvl scan data
-ref_time, ref_amp = sm.read_reference_data(ref_file)
+ref = RefData(ref_file, gate=[gate0, gate1])
 data = THzData(tvl_file, basedir, gate=thz_gate, follow_gate_on=True)
+
+# determine where the middle of the sample is and adjust the coordinates such
+# that (0, 0) is the center of the sample in the C-Scan
+# thresh = skimage.filters.threshold_otsu(data.c_scan)
+# binary_c_scan = np.zeros(data.c_scan.shape)
+# binary_c_scan[np.where(data.c_scan > thresh)] = 1
+
+# sample = np.where(binary_c_scan == 1)
+# first_i = sample[0].min()
+# last_i = sample[0].max()
+# first_j = sample[1].min()
+# last_j = sample[1].max()
+# center_i = int((last_i + first_i) / 2)
+# center_j = int((last_j + first_j) / 2)
+
+# data.adjust_coordinates(center_i, center_j)
 
 # if the sample is NOT overscanned need to comment this out
 # index_tuple = data.resize(-12, 12, -12, 12, return_indices=True)
@@ -77,36 +94,20 @@ data = THzData(tvl_file, basedir, gate=thz_gate, follow_gate_on=True)
 # plot reference waveform and gate0 before modification so we can see what
 # it looks like
 plt.figure('Reference Waveform')
-plt.plot(ref_time, ref_amp, 'r')
-plt.axvline(ref_time[gate0], linestyle='--', color='k')
-plt.axvline(ref_time[gate1], linestyle='--', color='k')
+plt.plot(ref.time, ref.waveform, 'r')
+plt.axvline(ref.time[gate0], linestyle='--', color='k')
+plt.axvline(ref.time[gate1], linestyle='--', color='k')
 plt.title('Reference Waveform')
 plt.xlabel('Time (ps)')
 plt.ylabel('Amplitude')
 plt.grid()
 
-# remove front blip and add ramp up factor to help with FFT
-# create the frequency values that we will actually convert to frequency domain
-# in a little bit
-ref_freq_amp = copy.deepcopy(ref_amp)
-ref_freq_amp[:gate0] = 0
-ref_freq_amp[gate1:] = 0
-ref_freq_amp[gate0] = ref_freq_amp[gate0+1] / 2
-ref_freq_amp[gate1] = ref_freq_amp[gate1-1] / 2
-
-# determine the wave length that was gathered
-# calculate dt and df
-wave_length = len(ref_time)
-dt = ref_time[1]
-df = 1 / (wave_length * dt)
-
-ref_freq = np.linspace(0., (wave_length/2) * df, wave_length//2+1)
-
-ref_freq_amp = np.fft.rfft(ref_freq_amp) * dt
-e0 = -ref_freq_amp  # initial E0 is the opposite of reference
+# Initial E0 is the negative of the reference frequency due to reflection from
+# aluminum plate
+e0 = -ref.freq_waveform  # initial E0 is the opposite of reference
 
 plt.figure('Reference Spectrum')
-plt.plot(ref_freq, np.abs(ref_freq_amp), 'r')
+plt.plot(ref.freq, np.abs(ref.freq_waveform), 'r')
 plt.title('Reference Spectrum')
 plt.xlabel('Frequency (THz)')
 plt.ylabel('Amplitude')
@@ -114,8 +115,8 @@ plt.xlim(0, 3.5)
 plt.grid()
 
 # calculate the frequency index that is closest to max_f
-stop_index = np.argmin(np.abs(ref_freq - max_f))
-start_index = np.argmin(np.abs(ref_freq - min_f))
+stop_index = np.argmin(np.abs(ref.freq - max_f))
+start_index = np.argmin(np.abs(ref.freq - min_f))
 
 # slice out the area around the back surface echo
 # using peak_bin prevents us from using numpy slicing though
@@ -137,7 +138,7 @@ data.freq_waveform = np.fft.rfft(data.gated_waveform, axis=2) * data.dt
 # use the time shifting property of the FFT to account for this
 
 # the time of flight at the focus point on reference
-focus_time = ref_time[ref_amp.argmax()]
+focus_time = ref.time[ref.waveform.argmax()]
 
 # use the time-shifting property of FFT to align each signal with ref signal
 for i in range(data.y_step):
@@ -157,8 +158,10 @@ if data.has_been_resized:
 if location is None:
     print('Start Brute Force Search to make Cost Model...')
     t0 = time.time()
-    cost = brute_force_search(data.freq_waveform[:, :, :stop_index], e0[:stop_index],
-                              data.freq[:stop_index], nr_bounds, ni_bounds, d, theta0,
+    cost = \
+        sm.brute_force_search(data.freq_waveform[:, :, :stop_index], 
+                              e0[:stop_index], data.freq[:stop_index], 
+                              nr_bounds, ni_bounds, n_media, d, theta0, 
                               return_sum=False)
 
     t1 = time.time()
@@ -167,8 +170,8 @@ if location is None:
 t0 = time.time()
 
 # initial guess for the gradient descent search
-n0 = complex(1.2, -0.8)
-n0_array = np.array([1.2, -0.8])
+n0 = complex(1.5, -0.2)
+n_media = np.array([1, -1])
 
 if location is None:
     shape = (data.freq_waveform.shape[0], data.freq_waveform.shape[1], stop_index)
@@ -180,7 +183,8 @@ if location is None:  # solve for every (i, j)
     t0 = time.time()
 
     print("Starting scipy's optimize")
-    n_array_fmin = util.scipy_optimize_parameters(data, n0_array, e0, d, stop_index)
+    n_array_fmin = sm.scipy_optimize_parameters(data, n0, n_media, e0, d, 
+                                                stop_index)
 
     t1 = time.time()
     print('Time for scipy optimize', t1-t0)
@@ -195,15 +199,16 @@ if location is None:  # solve for every (i, j)
         for j in range(ncols):
             e2 = data.freq_waveform[i, j, :]
             n_array[i, j, :] = \
-                util.parameter_gradient_descent(n0, e0, e2, theta0, d, data.freq,
-                                                start=start_index, stop=stop_index)
+                sm.parameter_gradient_descent(n0, n_media, e0, e2, theta0, d, 
+                                              data.freq, start=start_index, 
+                                              stop=stop_index)
 
 else:  # solve only for specified locations
     for loc_num, loc in enumerate(location):
         e2 = data.freq_waveform[loc[0], loc[1], :]
         n_array[loc_num, :] = \
-            util.parameter_gradient_descent(n0, e0, e2, theta0, d, data.freq,
-                                            start=start_index, stop=stop_index)
+            sm.parameter_gradient_descent(n0, e0, e2, theta0, d, data.freq,
+                                          start=start_index, stop=stop_index)
 
 t1 = time.time()
 print('Time for gradient descent on true function = %0.4f' % (t1-t0))
@@ -219,7 +224,8 @@ extent = (ni_bounds[0], ni_bounds[-1], nr_bounds[-1], nr_bounds[0])
 
 data.make_time_of_flight_c_scan()
 plt.figure('Time of Flight')
-plt.imshow(data.tof_c_scan, interpolation='none', cmap='gray')
+plt.imshow(data.tof_c_scan, interpolation='none', cmap='gray', 
+           extent=data.c_scan_extent)
 plt.title('Time of Flight')
 plt.grid()
 plt.colorbar()
@@ -274,4 +280,3 @@ else:
     plt.grid()
 
 plt.show()
-

@@ -41,6 +41,13 @@ def parabolic_equation(data, a, b, c, d, e):
     return paraboloid
 
 
+def parameter_estimation_driver(data, ref, min_f, max_f, n0, d):
+    """
+    Function to drive the parameter estimation
+    """
+    
+
+
 def parameter_gradient_descent(n0, e0, e2, theta0, d, freq, start=0, stop=None,
                                precision=1e-6, max_iter=1e4, gamma=0.01):
     """
