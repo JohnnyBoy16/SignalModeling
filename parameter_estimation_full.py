@@ -57,6 +57,9 @@ min_f = 0.25
 # incoming angle of the THz system
 theta0 = 17.5 * np.pi / 180
 
+# initial guess for the complex index of refraction of the material
+n0 = complex(1.5, -0.2)
+
 # the indices of refraction of the media on each side of the sample under 
 # question
 n_media = np.array([1.0, 1.0], dtype=complex)
@@ -153,7 +156,7 @@ if data.has_been_resized:
     i1 = index_tuple[1]
     j0 = index_tuple[2]
     j1 = index_tuple[3]
-    data.freq_waveform = data.freq_waveform[i0:i1, j0:j1, :]
+    data.freq_waveform_small = data.freq_waveform[i0:i1, j0:j1, :]
 
 if location is None:
     print('Start Brute Force Search to make Cost Model...')
@@ -168,10 +171,6 @@ if location is None:
     print('Brute Force Search Time = %0.4f seconds' % (t1-t0))
 
 t0 = time.time()
-
-# initial guess for the gradient descent search
-n0 = complex(1.5, -0.2)
-n_media = np.array([1, -1])
 
 if location is None:
     shape = (data.freq_waveform.shape[0], data.freq_waveform.shape[1], stop_index)
@@ -215,12 +214,6 @@ print('Time for gradient descent on true function = %0.4f' % (t1-t0))
 
 # use extent to set the values on the axis label for plotting
 extent = (ni_bounds[0], ni_bounds[-1], nr_bounds[-1], nr_bounds[0])
-
-# currently axis labels on mlab figure don't seem to be working
-# looks to be a bug on their end
-# mlab.figure('Cost Function vs n')
-# mlab.surf(ni_bounds, nr_bounds, np.rot90(cost, -1), warp_scale='auto')
-# mlab.colorbar()
 
 data.make_time_of_flight_c_scan()
 plt.figure('Time of Flight')
