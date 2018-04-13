@@ -14,13 +14,13 @@ from FrameHolder import FrameHolder
 
 # the reference file that is to be used in the calculation, must be of the same
 # time length and have same wavelength as the tvl data
-ref_file = 'C:\\Work\\Refs\\ref 18OCT2017\\30ps waveform.txt'
+ref_file = 'D:\\Work\\Refs\\ref 11APR2018\\35ps waveform.txt'
 
-basedir = 'C:\\Work\\Parameter Estimation\\Shim Stock TVL Files\\New Scans'
-tvl_file = 'Yellow Shim Stock.tvl'
+basedir = ''
+tvl_file = ''
 
 # range of real and imaginary values to build the cost function over
-nr_bounds = np.linspace(2.5, 1, 50)
+nr_bounds = np.linspace(3.5, 1.75, 50)
 ni_bounds = np.linspace(-0.001, -1.0, 50)
 
 # index from which to extract values from tvl file
@@ -32,26 +32,26 @@ location = None
 #                      [61, 65]])
 
 # thickness estimate of the yellow shim stock is 0.508 mm
-d = np.array([0.508])  # thickness of the sample in mm, use 0 to look at FSE
+d = np.array([0.4])  # thickness of the sample in mm, use 0 to look at FSE
 
 c = 0.2998  # speed of light in mm / ps
 
 # gate for Yellow Shim Stock is below
 # gate0 = 450
 # gate1 = 2050
-gate0 = 450  # index to remove front "blip"
-gate1 = 2050  # 2nd gate for reference signal, this cuts out on water vapor lines
+gate0 = 350  # index to remove front "blip"
+gate1 = 1730  # 2nd gate for reference signal, this cuts out on water vapor lines
 
 # gate to initialize the THzData class, want the echo of interest to be in the
 # follow gate. This allows us to use peak_bin to gate the area of interest in
 # the waveform, a gate of [[100, 1500], [370, 1170]] captures the front surface
 # echo in the lead gate and follow gate gets the back surface for the yellow
 # shim stock
-thz_gate = [[100, 1500], [370, 1170]]
+thz_gate = [[100, 1500], [725, 1600]]
 
 # maximum frequency we want to use in solution
 # above this signal to noise level gets too low
-max_f = 2.0
+max_f = 0.75
 min_f = 0.25
 
 # incoming angle of the THz system
@@ -62,7 +62,7 @@ n0 = complex(1.5, -0.2)
 
 # the indices of refraction of the media on each side of the sample under 
 # question
-n_media = np.array([1.0, 1.0], dtype=complex)
+n_media = np.array([1.0, -1.0], dtype=complex)
 
 # list of colors to use for plotting
 colors = ['r', 'b', 'g', 'k', 'm', 'c', 'y']
@@ -75,24 +75,26 @@ colors = ['r', 'b', 'g', 'k', 'm', 'c', 'y']
 ref = RefData(ref_file, gate=[gate0, gate1])
 data = THzData(tvl_file, basedir, gate=thz_gate, follow_gate_on=True)
 
+data.make_time_of_flight_c_scan()
+
 # determine where the middle of the sample is and adjust the coordinates such
 # that (0, 0) is the center of the sample in the C-Scan
-# thresh = skimage.filters.threshold_otsu(data.c_scan)
-# binary_c_scan = np.zeros(data.c_scan.shape)
-# binary_c_scan[np.where(data.c_scan > thresh)] = 1
+thresh = skimage.filters.threshold_otsu(data.c_scan)
+binary_c_scan = np.zeros(data.c_scan.shape)
+binary_c_scan[np.where(data.c_scan > thresh)] = 1
 
-# sample = np.where(binary_c_scan == 1)
-# first_i = sample[0].min()
-# last_i = sample[0].max()
-# first_j = sample[1].min()
-# last_j = sample[1].max()
-# center_i = int((last_i + first_i) / 2)
-# center_j = int((last_j + first_j) / 2)
+sample = np.where(binary_c_scan == 1)
+first_i = sample[0].min()
+last_i = sample[0].max()
+first_j = sample[1].min()
+last_j = sample[1].max()
+center_i = int((last_i + first_i) / 2)
+center_j = int((last_j + first_j) / 2)
 
-# data.adjust_coordinates(center_i, center_j)
+data.adjust_coordinates(center_i, center_j)
 
 # if the sample is NOT overscanned need to comment this out
-# index_tuple = data.resize(-12, 12, -12, 12, return_indices=True)
+index_tuple = data.resize(-11, 12, -11, 12, return_indices=True)
 
 # plot reference waveform and gate0 before modification so we can see what
 # it looks like
@@ -148,7 +150,7 @@ for i in range(data.y_step):
     for j in range(data.x_step):
         hit_time = data.time[data.waveform[i, j, :].argmax()]
         t_diff = focus_time - hit_time
-        data.freq_waveform[i, j, :] * np.exp(-2j * np.pi * data.freq * t_diff)
+        data.freq_waveform[i, j, :] *= np.exp(-2j * np.pi * data.freq * t_diff)
 
 # this needs to be here because there is not a peak_bin_small attribute
 if data.has_been_resized:
@@ -156,16 +158,16 @@ if data.has_been_resized:
     i1 = index_tuple[1]
     j0 = index_tuple[2]
     j1 = index_tuple[3]
-    data.freq_waveform_small = data.freq_waveform[i0:i1, j0:j1, :]
+    data.freq_waveform = data.freq_waveform[i0:i1, j0:j1, :]
 
-if location is None:
+if location is None and d != 0:
     print('Start Brute Force Search to make Cost Model...')
     t0 = time.time()
-    cost = \
-        sm.brute_force_search(data.freq_waveform[:, :, :stop_index], 
-                              e0[:stop_index], data.freq[:stop_index], 
-                              nr_bounds, ni_bounds, n_media, d, theta0, 
-                              return_sum=False)
+    # cost = \
+    #     sm.brute_force_search(data.freq_waveform[:, :, :stop_index], 
+    #                           e0[:stop_index], data.freq[:stop_index], 
+    #                           nr_bounds, ni_bounds, n_media, d, theta0, 
+    #                           return_sum=False)
 
     t1 = time.time()
     print('Brute Force Search Time = %0.4f seconds' % (t1-t0))
@@ -178,12 +180,12 @@ if location is None:
 else:
     n_array = np.zeros((len(location), stop_index), dtype=complex)
 
-if location is None:  # solve for every (i, j)
+if location is None and d != 0:  # solve for every (i, j)
     t0 = time.time()
 
-    print("Starting scipy's optimize")
-    n_array_fmin = sm.scipy_optimize_parameters(data, n0, n_media, e0, d, 
-                                                stop_index)
+    # print("Starting scipy's optimize")
+    # n_array_fmin = sm.scipy_optimize_parameters(data, n0, n_media, e0, d, 
+    #                                             stop_index)
 
     t1 = time.time()
     print('Time for scipy optimize', t1-t0)
@@ -202,6 +204,27 @@ if location is None:  # solve for every (i, j)
                                               data.freq, start=start_index, 
                                               stop=stop_index)
 
+elif location is None and d == 0:
+    print('Solving directly for complex index of refraction!')
+
+    n_array = np.zeros(data.freq_waveform.shape, dtype=complex)
+    nrows = data.freq_waveform.shape[0] 
+    ncols = data.freq_waveform.shape[1]
+
+    for i in range(nrows):
+        print('Row %d of %d' % (i+1, nrows))
+        for j in range(ncols):
+            e2 = data.freq_waveform[i, j, :]
+            R01 = e2 / e0
+
+            n0 = n_media[0]  # index of refraction of initial media
+
+            # solve directly for n1
+            n1 = n0 * (1 - R01) / (R01 + 1)
+
+            # store n1
+            n_array[i, j, :] = n1
+
 else:  # solve only for specified locations
     for loc_num, loc in enumerate(location):
         e2 = data.freq_waveform[loc[0], loc[1], :]
@@ -215,7 +238,6 @@ print('Time for gradient descent on true function = %0.4f' % (t1-t0))
 # use extent to set the values on the axis label for plotting
 extent = (ni_bounds[0], ni_bounds[-1], nr_bounds[-1], nr_bounds[0])
 
-data.make_time_of_flight_c_scan()
 plt.figure('Time of Flight')
 plt.imshow(data.tof_c_scan, interpolation='none', cmap='gray', 
            extent=data.c_scan_extent)
@@ -223,17 +245,40 @@ plt.title('Time of Flight')
 plt.grid()
 plt.colorbar()
 
-pdb.set_trace()
+if data.has_been_resized:
+    plt.figure('Zoomed TOF C-Scan')
+    plt.imshow(data.tof_c_scan_small, cmap='gray')
+    plt.title('Time of Flight (ps)')
+    plt.xlabel('X Scan Location (mm)')
+    plt.ylabel('Y Scan Location (mm)')
+    plt.grid()
+    plt.colorbar()
 
 if location is None:
 
-    app = wx.App(False)
+    plt.figure('Real Solution')
+    plt.imshow(n_array.real[:, :, start_index:stop_index].mean(axis=2), 
+               extent=data.small_extent)
+    plt.xlabel('X Scan Location (mm)')
+    plt.ylabel('Y Scan Location (mm)')
+    plt.grid()
+    plt.colorbar()
 
-    holder = FrameHolder(data, n_array, n_array_fmin, cost, e0, d)
+    plt.figure('Imaginary Solution')
+    plt.imshow(n_array.imag[:, :, start_index:stop_index].mean(axis=2), 
+               extent=data.small_extent)
+    plt.xlabel('X Scan Location (mm)')
+    plt.ylabel('Y Scan Location (mm)')
+    plt.grid()
+    plt.colorbar()
 
-    plt.show()
+    # app = wx.App(False)
 
-    app.MainLoop()
+    # holder = FrameHolder(data, n_array, n_array_fmin, cost, e0, d)
+
+    # plt.show()
+
+    # app.MainLoop()
 
 else:
     plt.figure('Index of Refraction')
