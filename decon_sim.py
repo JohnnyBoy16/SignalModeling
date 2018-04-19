@@ -3,11 +3,53 @@ Script to learn and showcase the Iterative shrinking algorithm for sparse
 deconvolution that is presented in Dong's Thesis Section 4.2
 See specifically section 4.2.4 on Numerical and Experimental Verification
 """
+import pdb
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 from THzProc.THzData import RefData
+
+
+def deconvolution_L1(wave, ref_wave, lam, n_iter):
+    """
+    L1 sparse deconvolution algorithm
+    """
+
+    n_points = len(wave)
+
+    cost = np.zeros(n_iter)
+
+    H = np.zeros((n_points, n_points))
+
+    # before setting up the convolution matrix we need to shift the reference
+    # waveform so the argmax is at the zero position
+    ref_wave = np.roll(ref_wave, -ref_wave.argmax())
+
+    for i in range(n_points):
+        H[:, i] = np.roll(ref_wave, i)
+
+    tau = 2 / np.abs(np.transpose(H) * H)
+
+    f = wave
+    for i in range(n_iter):
+        s = np.zeros(n_points)
+        for k in range(n_points):
+            if f[k] <= -lam*tau:
+                s[k] = f[k] + lam*tau
+            elif np.abs(f[k]) < lam*tau:
+                s[k] = 0
+            elif f[k] >= lam*tau:
+                s[k] = f[k] - lam*tau
+            else:
+                raise ValueError('None of the conditions met!')
+
+        f = s * (f - tau*np.transpose(H)*(H*f) - wave) 
+
+        cost[i] = 0.5 * np.sum(np.abs(np.matmul(H, f) - wave)**2) + lam * np.sum(np.abs(wave))
+
+    return f, cost
+
 
 filename = 'C:\\Work\\Refs\\ref 04APR2018\\50ps waveform.txt'
 
@@ -137,6 +179,54 @@ plt.grid()
 plt.subplot(212)
 plt.plot(f2_x, 'bo-')
 plt.title('F2')
+plt.grid()
+
+# try sparse deconvolution
+
+lam = 0.01
+
+wave = f1_y
+n_iter = 2
+ref_wave = np.fft.irfft(ref.freq_waveform) / ref.dt
+
+n_points = len(wave)
+
+cost = np.zeros(n_iter)
+
+H = np.zeros((n_points, n_points))
+
+# before setting up the convolution matrix we need to shift the reference
+# waveform so the argmax is at the zero position
+ref_wave = np.roll(ref_wave, -ref_wave.argmax())
+
+for i in range(n_points):
+    H[:, i] = np.roll(ref_wave, i)
+
+tau = 1 / np.linalg.norm(np.matmul(np.transpose(H), H), 2)
+
+f = wave
+for i in range(n_iter):
+    s = np.zeros(n_points)
+    for k in range(n_points):
+        if f[k] <= -lam*tau:
+            s[k] = f[k] + lam*tau
+        elif np.abs(f[k]) < lam*tau:
+            s[k] = 0
+        elif f[k] >= lam*tau:
+            s[k] = f[k] - lam*tau
+        else:
+            raise ValueError('None of the conditions met!')
+
+    Hf = np.matmul(H, f)
+    Hf_minus_y = Hf - wave
+    f = s * (f - tau*np.matmul(np.transpose(H), Hf_minus_y))
+
+    cost[i] = 0.5 * np.sum(np.abs(np.matmul(H, f) - wave)**2) + lam * np.sum(np.abs(wave))
+
+f1_sparse = f
+
+plt.figure('f1 sparse deconvolution')
+plt.plot(f1_sparse, 'k-o')
 plt.grid()
 
 plt.show()
